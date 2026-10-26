@@ -1,0 +1,387 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex, nofollow">
+<title>Umsatz 2027</title>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icon-180.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Umsatz 2027">
+<meta name="theme-color" content="#0b7a8f">
+<style>
+:root{
+  --bg:#edf2f5; --card:#ffffff; --text:#0f2231; --muted:#5d7080; --line:#e1e8ee;
+  --accent:#0e7c86; --accent-soft:#e3f4f4; --track:#e3ecf1; --bad:#c0352b; --bad-soft:#fdecea; --warn:#b85c0a; --warn-soft:#fff1e2; --done:#1f9d63;
+  --shadow:0 1px 2px rgba(15,34,49,.05), 0 10px 30px rgba(15,34,49,.07);
+  --radius:18px;
+  --hero:linear-gradient(135deg,#0b4f6c 0%,#0e7c86 55%,#23a6a0 100%);
+}
+@media (prefers-color-scheme: dark){
+  :root{ --bg:#0c1820; --card:#13232e; --text:#e6eef3; --muted:#93a8b6; --line:#22384a; --accent:#2fb5ae; --accent-soft:#163a3d; --track:#22384a;
+    --bad:#ef6b5f; --bad-soft:#3a1d1b; --warn:#f0a35a; --warn-soft:#3a2a17; --done:#4cc98d;
+    --shadow:0 1px 2px rgba(0,0,0,.3), 0 10px 30px rgba(0,0,0,.25); }
+}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--bg);color:var(--text);font:16px/1.45 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;-webkit-text-size-adjust:100%}
+.wrap{max-width:60rem;margin:0 auto;padding:0 16px calc(24px + env(safe-area-inset-bottom))}
+.hero{background:var(--hero);color:#fff;padding:calc(20px + env(safe-area-inset-top)) 16px 16px;margin:0 -16px 16px;border-radius:0 0 var(--radius) var(--radius)}
+.hero h1{margin:0;font-size:1.7rem;font-weight:650;letter-spacing:-.01em}
+.hero p{margin:.35rem 0 0;opacity:.92}
+.hero .stand{font-size:.8rem;opacity:.8;margin-top:.5rem}
+.tabs{display:flex;gap:6px;margin-top:14px}
+.tabs button{all:unset;cursor:pointer;padding:7px 14px;border-radius:999px;background:rgba(255,255,255,.16);font-size:.9rem;font-weight:550}
+.tabs button[aria-selected=true]{background:#fff;color:#0b4f6c}
+.tabs .badge{display:inline-block;min-width:1.3em;padding:0 .35em;margin-left:.35em;border-radius:999px;background:var(--bad);color:#fff;font-size:.75rem;text-align:center}
+.card{background:var(--card);border-radius:var(--radius);box-shadow:var(--shadow);padding:18px;margin-bottom:14px;min-width:0}
+.card h2{margin:0 0 12px;font-size:1.05rem;font-weight:620}
+.goal{display:grid;grid-template-columns:auto 1fr;gap:20px;align-items:center}
+.ring{position:relative;width:11rem;height:11rem}
+.ring svg{width:100%;height:100%;display:block}
+.ring .c{position:absolute;inset:0;display:grid;place-content:center;text-align:center}
+.pct{font-size:2.2rem;font-weight:650;font-variant-numeric:tabular-nums;line-height:1}
+.lbl{font-size:.8rem;color:var(--muted)}
+dl{margin:0;display:grid;gap:12px}
+dd{margin:2px 0 0;font-size:1.35rem;font-weight:620;font-variant-numeric:tabular-nums}
+dd.s{font-size:1.05rem;font-weight:550}
+@media (max-width:30rem){.goal{grid-template-columns:1fr;justify-items:center}dl{justify-self:stretch;grid-template-columns:repeat(3,1fr);gap:8px;text-align:center}dd{font-size:1.05rem}dd.s{font-size:.95rem}}
+.tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,9rem),1fr));gap:12px;margin-bottom:14px}
+.tile{background:var(--card);border-radius:var(--radius);box-shadow:var(--shadow);padding:14px 16px}
+.tile .v{font-size:1.6rem;font-weight:650;font-variant-numeric:tabular-nums;margin:2px 0}
+.tile.warn .v{color:var(--bad)}
+.chart{position:relative}
+.chart svg{display:block;width:100%;overflow:visible}
+.chart text{font-size:11px;fill:var(--muted);font-variant-numeric:tabular-nums}
+.tip{position:absolute;pointer-events:none;background:var(--card);border:1px solid var(--line);border-radius:10px;box-shadow:var(--shadow);padding:6px 10px;font-size:.8rem;white-space:nowrap;font-variant-numeric:tabular-nums}
+.tip b{display:block;color:var(--muted);font-weight:500}
+.scroll{max-height:32rem;overflow:auto;-webkit-overflow-scrolling:touch;border-top:1px solid var(--line)}
+table{width:100%;border-collapse:collapse;font-size:.88rem;font-variant-numeric:tabular-nums}
+th{position:sticky;top:0;background:var(--card);text-align:left;font-weight:550;font-size:.78rem;color:var(--muted);border-bottom:1px solid var(--line);padding:0;z-index:1}
+th button{all:unset;cursor:pointer;display:block;padding:8px 6px}
+th[aria-sort=ascending] button::after{content:" ↑"}
+th[aria-sort=descending] button::after{content:" ↓"}
+td{padding:8px 6px;border-bottom:1px solid var(--line);white-space:nowrap}
+td.name{white-space:normal;min-width:8rem}
+.n{text-align:right}
+th.n button{text-align:right;width:100%;box-sizing:border-box}
+@media (max-width:40rem){.w{display:none}}
+.err{color:var(--bad)}
+/* Nachbetreuung */
+.list{display:grid;gap:10px}
+.kunde{display:grid;grid-template-columns:auto 1fr;gap:12px;align-items:start;background:var(--card);border-radius:14px;box-shadow:var(--shadow);padding:12px 14px;border-left:4px solid var(--line)}
+.kunde.heute{border-left-color:var(--bad)}
+.kunde.offen{border-left-color:var(--warn)}
+.kunde.bald{border-left-color:var(--accent)}
+.kunde.erledigt{opacity:.55;border-left-color:var(--done)}
+.kunde input{width:22px;height:22px;margin:2px 0 0;accent-color:var(--done)}
+.kunde .k{font-weight:620}
+.kunde .d{font-size:.85rem;color:var(--muted)}
+.pill{display:inline-block;font-size:.72rem;font-weight:600;padding:1px 8px;border-radius:999px;margin-left:6px;vertical-align:1px}
+.heute .pill{background:var(--bad-soft);color:var(--bad)}
+.offen .pill{background:var(--warn-soft);color:var(--warn)}
+.bald .pill{background:var(--accent-soft);color:var(--accent)}
+.erledigt .pill{background:transparent;color:var(--done)}
+.hint{font-size:.8rem;color:var(--muted);margin:4px 2px 12px}
+/* Login */
+.login{max-width:22rem;margin:12vh auto 0;text-align:center}
+.login input{width:100%;font:inherit;font-size:1.1rem;padding:12px 14px;border-radius:12px;border:1px solid var(--line);background:var(--card);color:var(--text);margin:14px 0 10px;text-align:center}
+.login button{all:unset;cursor:pointer;display:block;width:100%;padding:12px 0;border-radius:12px;background:var(--accent);color:#fff;font-weight:600}
+[hidden]{display:none!important}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="hero">
+    <h1>Umsatz 2027</h1>
+    <p id="fazit">&nbsp;</p>
+    <div class="stand" id="stand"></div>
+    <div class="tabs" role="tablist" id="tabs" hidden>
+      <button role="tab" aria-selected="true" data-tab="umsatz">Umsatz</button>
+      <button role="tab" aria-selected="false" data-tab="nach">Nachbetreuung<span class="badge" id="badge" hidden></span></button>
+    </div>
+  </header>
+
+  <form class="card login" id="login" hidden>
+    <h2>Passwort</h2>
+    <div class="lbl">Die Daten sind verschlüsselt. Das Passwort wird nur einmal auf diesem Gerät abgefragt.</div>
+    <input type="password" id="pw" autocomplete="current-password" autocapitalize="off" spellcheck="false">
+    <button type="submit">Öffnen</button>
+    <p class="err" id="pw-err" hidden>Passwort stimmt nicht.</p>
+  </form>
+
+  <main id="tab-umsatz" hidden>
+    <section class="card">
+      <h2>Jahresziel 2027</h2>
+      <div class="goal">
+        <div class="ring"><svg viewBox="0 0 200 200" id="ring" aria-hidden="true"></svg>
+          <div class="c"><span class="pct" id="pct">–</span><span class="lbl">erreicht</span></div></div>
+        <dl>
+          <div><dt class="lbl">Umsatz bisher</dt><dd id="umsatz">–</dd></div>
+          <div><dt class="lbl">Jahresziel</dt><dd class="s" id="ziel">–</dd></div>
+          <div><dt class="lbl">Fehlt noch</dt><dd class="s" id="fehlt">–</dd></div>
+        </dl>
+      </div>
+    </section>
+
+    <section class="tiles">
+      <div class="tile"><div class="lbl">Gebuchte Aufträge</div><div class="v" id="anzahl">–</div><div class="lbl">Abreise 01.01.–31.12.2027</div></div>
+      <div class="tile"><div class="lbl">Ø Reisepreis</div><div class="v" id="schnitt">–</div><div class="lbl">je gebuchtem Auftrag</div></div>
+      <div class="tile" id="tile-opt"><div class="lbl">Offene Optionen</div><div class="v" id="offen">–</div><div class="lbl" id="heute">&nbsp;</div></div>
+    </section>
+
+    <section class="card">
+      <h2>Umsatz je Abreisemonat</h2>
+      <div class="chart" id="chart"></div>
+    </section>
+
+    <section class="card">
+      <h2>Aufträge 2027</h2>
+      <div class="scroll">
+        <table id="tabelle">
+          <thead><tr>
+            <th data-k="abreise"><button type="button">Abflug</button></th>
+            <th data-k="rueckreise"><button type="button">Rückreise</button></th>
+            <th data-k="kunde"><button type="button">Name</button></th>
+            <th data-k="webcode" class="w"><button type="button">Webcode</button></th>
+            <th data-k="veranstalter" class="w"><button type="button">VA</button></th>
+            <th data-k="ziel" class="w"><button type="button">Ziel</button></th>
+            <th data-k="reisepreis" class="n"><button type="button">Reisepreis</button></th>
+          </tr></thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </section>
+  </main>
+
+  <main id="tab-nach" hidden>
+    <p class="hint">Kunden 3 Tage nach der Rückreise anschreiben und fragen, wie der Urlaub war. Abhaken merkt sich nur dieses Gerät.</p>
+    <div class="list" id="nachliste"></div>
+  </main>
+</div>
+
+<script>
+const ZIEL = 1250000;
+const NACH_TAGE = 3;
+const eur0 = new Intl.NumberFormat('de-DE', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 });
+const eur2 = new Intl.NumberFormat('de-DE', { style: 'currency', currency: 'EUR' });
+const int = new Intl.NumberFormat('de-DE');
+const pct = new Intl.NumberFormat('de-DE', { style: 'percent', minimumFractionDigits: 1, maximumFractionDigits: 1 });
+const MONAT = ['Januar','Februar','März','April','Mai','Juni','Juli','August','September','Oktober','November','Dezember'];
+const KURZ = ['Jan','Feb','Mär','Apr','Mai','Jun','Jul','Aug','Sep','Okt','Nov','Dez'];
+const datum = (iso) => iso ? iso.slice(8, 10) + '.' + iso.slice(5, 7) + '.' + iso.slice(2, 4) : '';
+const $ = (id) => document.getElementById(id);
+const NS = 'http://www.w3.org/2000/svg';
+const el = (tag, attrs, parent) => { const e = document.createElementNS(NS, tag); for (const k in attrs) e.setAttribute(k, attrs[k]); if (parent) parent.append(e); return e; };
+const store = {
+  get: (k) => { try { return localStorage.getItem(k); } catch (e) { return null; } },
+  set: (k, v) => { try { localStorage.setItem(k, v); } catch (e) {} },
+  del: (k) => { try { localStorage.removeItem(k); } catch (e) {} },
+};
+
+let auftraege = [], monate = [], daten = null;
+const sort = { key: 'abreise', dir: 1 };
+
+// ---------- Entschlüsseln (AES-256-CBC, PBKDF2-SHA256) ----------
+const b64 = (s) => Uint8Array.from(atob(s), (c) => c.charCodeAt(0));
+async function entschluesseln(huelle, pw) {
+  const basis = await crypto.subtle.importKey('raw', new TextEncoder().encode(pw), 'PBKDF2', false, ['deriveKey']);
+  const key = await crypto.subtle.deriveKey({ name: 'PBKDF2', salt: b64(huelle.salt), iterations: huelle.iter, hash: 'SHA-256' },
+    basis, { name: 'AES-CBC', length: 256 }, false, ['decrypt']);
+  const klar = await crypto.subtle.decrypt({ name: 'AES-CBC', iv: b64(huelle.iv) }, key, b64(huelle.daten));
+  return JSON.parse(new TextDecoder().decode(klar));
+}
+
+// ---------- Umsatz ----------
+function arc(r1, r2, a) {
+  const p = (r, w) => [100 + r * Math.sin(w), 100 - r * Math.cos(w)];
+  const big = a > Math.PI ? 1 : 0;
+  const [x1, y1] = p(r2, 0), [x2, y2] = p(r2, a), [x3, y3] = p(r1, a), [x4, y4] = p(r1, 0);
+  return `M${x1} ${y1}A${r2} ${r2} 0 ${big} 1 ${x2} ${y2}L${x3} ${y3}A${r1} ${r1} 0 ${big} 0 ${x4} ${y4}Z`;
+}
+
+function drawRing(share) {
+  const svg = $('ring'); svg.replaceChildren();
+  el('circle', { cx: 100, cy: 100, r: 85, fill: 'none', stroke: 'var(--track)', 'stroke-width': 22 }, svg);
+  if (share >= 1) el('circle', { cx: 100, cy: 100, r: 85, fill: 'none', stroke: 'var(--accent)', 'stroke-width': 22 }, svg);
+  else if (share > 0) el('path', { d: arc(74, 96, Math.max(share, 0.012) * 2 * Math.PI), fill: 'var(--accent)' }, svg);
+}
+
+function drawChart() {
+  const box = $('chart'); box.replaceChildren();
+  const W = Math.max(280, box.clientWidth || 600), H = 240, mt = 14, mb = 24;
+  const max = Math.max(...monate.map((m) => m.umsatz), 1);
+  const stepV = [10000, 20000, 25000, 50000, 100000, 200000, 250000, 500000].find((s) => max / s <= 5) || 1000000;
+  const top = Math.ceil(max / stepV) * stepV;
+  const y = (v) => H - mb - (v / top) * (H - mt - mb);
+  const svg = el('svg', { viewBox: `0 0 ${W} ${H}`, role: 'img', 'aria-label': 'Umsatz je Abreisemonat 2027' }, box);
+  const ticks = []; for (let v = 0; v <= top; v += stepV) ticks.push(v);
+  const lab = (v) => (v === 0 ? '0' : int.format(v / 1000) + ' T€');
+  const ml = 8 + Math.max(...ticks.map((t) => lab(t).length)) * 6.2;
+  ticks.forEach((t) => {
+    el('line', { x1: ml, x2: W, y1: y(t), y2: y(t), stroke: 'var(--line)' }, svg);
+    el('text', { x: ml - 6, y: y(t), dy: '0.32em', 'text-anchor': 'end' }, svg).textContent = lab(t);
+  });
+  const step = (W - ml) / 12, bw = Math.min(32, step * 0.7);
+  const tip = document.createElement('div'); tip.className = 'tip'; tip.hidden = true; box.append(tip);
+  const bars = monate.map((m, i) => {
+    const cx = ml + step * i + step / 2;
+    const b = el('rect', { x: cx - bw / 2, width: bw, y: y(m.umsatz), height: Math.max(0, y(0) - y(m.umsatz)), rx: 4, fill: 'var(--accent)' }, svg);
+    el('text', { x: cx, y: H - 6, 'text-anchor': 'middle' }, svg).textContent = step < 30 ? KURZ[i][0] : KURZ[i];
+    return b;
+  });
+  monate.forEach((m, i) => {
+    const hit = el('rect', { x: ml + step * i, width: step, y: mt, height: H - mt - mb, fill: 'transparent' }, svg);
+    hit.addEventListener('pointerenter', () => {
+      bars.forEach((b, j) => b.setAttribute('opacity', j === i ? 1 : 0.45));
+      const h = document.createElement('b'); h.textContent = MONAT[i] + ' 2027';
+      tip.replaceChildren(h, eur2.format(m.umsatz), document.createElement('br'), int.format(m.auftraege) + (m.auftraege === 1 ? ' Auftrag' : ' Aufträge'));
+      tip.hidden = false;
+      const r = box.getBoundingClientRect(), cx = ((ml + step * i + step / 2) / W) * r.width;
+      tip.style.left = Math.min(Math.max(0, cx - tip.offsetWidth / 2), r.width - tip.offsetWidth) + 'px';
+      tip.style.top = Math.max(0, (y(m.umsatz) / H) * r.height - tip.offsetHeight - 10) + 'px';
+    });
+    hit.addEventListener('pointerleave', () => { tip.hidden = true; bars.forEach((b) => b.setAttribute('opacity', 1)); });
+  });
+}
+
+function drawTable() {
+  document.querySelectorAll('#tabelle th').forEach((th) => th.setAttribute('aria-sort', th.dataset.k === sort.key ? (sort.dir > 0 ? 'ascending' : 'descending') : 'none'));
+  const num = sort.key === 'reisepreis';
+  const rows = [...auftraege].sort((p, q) => {
+    const u = num ? p.reisepreis : p[sort.key] || '', v = num ? q.reisepreis : q[sort.key] || '';
+    return (u < v ? -1 : u > v ? 1 : 0) * sort.dir || (p.abreise < q.abreise ? -1 : 1);
+  });
+  document.querySelector('#tabelle tbody').replaceChildren(...rows.map((r) => {
+    const tr = document.createElement('tr');
+    const td = (t, c) => { const x = document.createElement('td'); x.textContent = t; if (c) x.className = c; tr.append(x); };
+    td(datum(r.abreise)); td(datum(r.rueckreise)); td(r.kunde, 'name'); td(r.webcode, 'w'); td(r.veranstalter, 'w'); td(r.ziel, 'w'); td(eur2.format(r.reisepreis), 'n');
+    return tr;
+  }));
+}
+document.querySelector('#tabelle thead').addEventListener('click', (e) => {
+  const th = e.target.closest('th'); if (!th) return;
+  if (sort.key === th.dataset.k) sort.dir *= -1; else { sort.key = th.dataset.k; sort.dir = th.dataset.k === 'reisepreis' ? -1 : 1; }
+  drawTable();
+});
+
+function renderUmsatz(d) {
+  // Aufträge mit 0 € (Preis fehlt in myJACK) zählen nicht
+  auftraege = d.auftraege.map((a) => ({ ...a, reisepreis: Number(a.reisepreis) })).filter((a) => a.reisepreis > 0);
+  const umsatz = auftraege.reduce((s, a) => s + a.reisepreis, 0);
+  monate = KURZ.map((_, i) => {
+    const r = auftraege.filter((a) => Number(a.abreise.slice(5, 7)) === i + 1);
+    return { umsatz: r.reduce((s, a) => s + a.reisepreis, 0), auftraege: r.length };
+  });
+  const share = umsatz / ZIEL;
+  $('pct').textContent = pct.format(share);
+  $('umsatz').textContent = eur0.format(umsatz);
+  $('ziel').textContent = eur0.format(ZIEL);
+  $('fehlt').textContent = eur0.format(Math.max(0, ZIEL - umsatz));
+  $('anzahl').textContent = int.format(auftraege.length);
+  $('schnitt').textContent = eur0.format(auftraege.length ? umsatz / auftraege.length : 0);
+  const o = d.optionen || {};
+  $('offen').textContent = int.format(Number(o.offen) || 0);
+  $('heute').textContent = (Number(o.heute_faellig) || 0) + ' heute fällig';
+  $('tile-opt').classList.toggle('warn', Number(o.heute_faellig) > 0);
+  const best = monate.reduce((a, b, i) => (b.umsatz > monate[a].umsatz ? i : a), 0);
+  $('fazit').textContent = pct.format(share) + ' des Jahresziels sind gebucht. Stärkster Abreisemonat ist ' + MONAT[best] + ' mit ' + eur0.format(monate[best].umsatz) + '.';
+  drawRing(share); drawChart(); drawTable();
+}
+
+// ---------- Nachbetreuung ----------
+const tagNr = (iso) => Math.floor(Date.UTC(+iso.slice(0, 4), +iso.slice(5, 7) - 1, +iso.slice(8, 10)) / 864e5);
+const heuteNr = () => { const t = new Date(); return Math.floor(Date.UTC(t.getFullYear(), t.getMonth(), t.getDate()) / 864e5); };
+const isoAus = (nr) => new Date(nr * 864e5).toISOString().slice(0, 10);
+let erledigt = new Set(JSON.parse(store.get('nachbetreuung-erledigt') || '[]'));
+
+function renderNach(d) {
+  const heute = heuteNr();
+  // ein Eintrag je Kunde und Rückreisetag
+  const map = new Map();
+  for (const r of d.rueckkehrer || []) {
+    if (!r.rueckreise) continue;
+    const key = r.kunde + '|' + r.rueckreise;
+    const e = map.get(key) || { key, kunde: r.kunde, rueckreise: r.rueckreise, abreise: r.abreise, ziele: new Set(), webcodes: [] };
+    if (r.abreise < e.abreise) e.abreise = r.abreise;
+    if (r.beschreibung || r.ziel) e.ziele.add(r.beschreibung || r.ziel);
+    if (r.webcode) e.webcodes.push(r.webcode);
+    map.set(key, e);
+  }
+  const liste = [...map.values()].map((e) => {
+    const faellig = tagNr(e.rueckreise) + NACH_TAGE;
+    const status = erledigt.has(e.key) ? 'erledigt' : faellig === heute ? 'heute' : faellig < heute ? 'offen' : 'bald';
+    return { ...e, faellig, status };
+  }).filter((e) => tagNr(e.rueckreise) <= heute)
+    .sort((a, b) => ({ heute: 0, offen: 1, bald: 2, erledigt: 3 }[a.status] - { heute: 0, offen: 1, bald: 2, erledigt: 3 }[b.status]) || b.faellig - a.faellig);
+
+  const offen = liste.filter((e) => e.status === 'heute' || e.status === 'offen').length;
+  $('badge').hidden = !offen; $('badge').textContent = offen;
+
+  const text = { heute: 'heute anschreiben', offen: 'fällig seit ', bald: 'ab ', erledigt: 'erledigt' };
+  $('nachliste').replaceChildren(...liste.map((e) => {
+    const div = document.createElement('label'); div.className = 'kunde ' + e.status;
+    const cb = document.createElement('input'); cb.type = 'checkbox'; cb.checked = e.status === 'erledigt';
+    cb.addEventListener('change', () => {
+      cb.checked ? erledigt.add(e.key) : erledigt.delete(e.key);
+      store.set('nachbetreuung-erledigt', JSON.stringify([...erledigt]));
+      renderNach(daten);
+    });
+    const info = document.createElement('div');
+    const k = document.createElement('div'); k.className = 'k'; k.textContent = e.kunde;
+    const pill = document.createElement('span'); pill.className = 'pill';
+    pill.textContent = e.status === 'offen' ? text.offen + datum(isoAus(e.faellig)) : e.status === 'bald' ? text.bald + datum(isoAus(e.faellig)) : text[e.status];
+    k.append(pill);
+    const d1 = document.createElement('div'); d1.className = 'd'; d1.textContent = 'Reise ' + datum(e.abreise) + ' – ' + datum(e.rueckreise) + (e.ziele.size ? ' · ' + [...e.ziele].join(', ') : '');
+    info.append(k, d1);
+    div.append(cb, info);
+    return div;
+  }));
+  if (!liste.length) { const p = document.createElement('p'); p.className = 'hint'; p.textContent = 'Keine Rückkehrer in den letzten Tagen.'; $('nachliste').append(p); }
+}
+
+// ---------- Ablauf ----------
+function zeigeTab(name) {
+  document.querySelectorAll('#tabs button').forEach((b) => b.setAttribute('aria-selected', b.dataset.tab === name));
+  $('tab-umsatz').hidden = name !== 'umsatz';
+  $('tab-nach').hidden = name !== 'nach';
+  store.set('tab', name);
+  if (name === 'umsatz') drawChart();
+}
+$('tabs').addEventListener('click', (e) => { const b = e.target.closest('button'); if (b) zeigeTab(b.dataset.tab); });
+
+function anzeigen(d) {
+  daten = d;
+  $('login').hidden = true; $('tabs').hidden = false;
+  const t = new Date(d.aktualisiert);
+  $('stand').textContent = 'Stand: ' + t.toLocaleString('de-DE', { dateStyle: 'medium', timeStyle: 'short' }) + ' Uhr (aus myJACK)';
+  zeigeTab(store.get('tab') === 'nach' ? 'nach' : 'umsatz');
+  renderUmsatz(d); renderNach(d);
+  let w = innerWidth; addEventListener('resize', () => { if (innerWidth !== w) { w = innerWidth; if (!$('tab-umsatz').hidden) drawChart(); } });
+}
+
+async function start() {
+  let huelle;
+  try {
+    const r = await fetch('daten.enc.json', { cache: 'no-store' });
+    if (!r.ok) throw new Error(r.status);
+    huelle = await r.json();
+  } catch (e) { $('fazit').textContent = 'Daten konnten nicht geladen werden.'; return; }
+  const gespeichert = store.get('pw');
+  if (gespeichert) {
+    try { return anzeigen(await entschluesseln(huelle, gespeichert)); } catch (e) { store.del('pw'); }
+  }
+  $('login').hidden = false; $('pw').focus();
+  $('login').addEventListener('submit', async (ev) => {
+    ev.preventDefault();
+    const pw = $('pw').value.trim();
+    try { const d = await entschluesseln(huelle, pw); store.set('pw', pw); anzeigen(d); }
+    catch (e) { $('pw-err').hidden = false; }
+  });
+}
+start();
+
+if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js');
+</script>
+</body>
+</html>

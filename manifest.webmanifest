@@ -1,0 +1,14 @@
+{
+  "name": "Umsatz 2027",
+  "short_name": "Umsatz 2027",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#edf2f5",
+  "theme_color": "#0b7a8f",
+  "lang": "de",
+  "icons": [
+    { "src": "icon-180.png", "sizes": "180x180", "type": "image/png" },
+    { "src": "icon-512.png", "sizes": "512x512", "type": "image/png" }
+  ]
+}
