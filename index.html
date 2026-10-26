@@ -457,8 +457,8 @@ function einreiseListe(d) {
     const bis = regel.bis_tage != null ? an - regel.bis_tage : an;
     map.set(key, { key, kunde: r.kunde, abreise: r.abreise, land, regel, ab, bis, beschreibung: r.beschreibung || r.ziel });
   }
-  // Was schon möglich ist, nach Frist (dringendstes oben); der Rest nach Starttermin
-  return [...map.values()].sort((a, b) => Math.max(a.ab, heute) - Math.max(b.ab, heute) || a.bis - b.bis || a.kunde.localeCompare(b.kunde));
+  // Nächste Abreise zuerst (Lucas): eine ESTA für Mai steht unter einer Einreisekarte für nächste Woche
+  return [...map.values()].sort((a, b) => (a.abreise < b.abreise ? -1 : a.abreise > b.abreise ? 1 : 0) || a.bis - b.bis || a.kunde.localeCompare(b.kunde));
 }
 
 // Kalender-Datei (ics): ganztägiger Termin am ersten möglichen Tag
