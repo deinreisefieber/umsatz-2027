@@ -273,9 +273,12 @@ document.querySelector('#tabelle thead').addEventListener('click', (e) => {
   drawTable();
 });
 
+// Nie angezeigt und nie gezählt: Aufträge mit 0 € (Preis fehlt in myJACK) und Versicherungen (Veranstalter ERV)
+const sichtbar = (r) => Number(r.reisepreis) > 0 && String(r.veranstalter || '').trim().toUpperCase() !== 'ERV'
+  && !/versicherung/i.test(r.beschreibung || '');
+
 function renderUmsatz(d) {
-  // Aufträge mit 0 € (Preis fehlt in myJACK) zählen nicht
-  auftraege = d.auftraege.map((a) => ({ ...a, reisepreis: Number(a.reisepreis) })).filter((a) => a.reisepreis > 0);
+  auftraege = d.auftraege.filter(sichtbar).map((a) => ({ ...a, reisepreis: Number(a.reisepreis) }));
   const umsatz = auftraege.reduce((s, a) => s + a.reisepreis, 0);
   monate = KURZ.map((_, i) => {
     const r = auftraege.filter((a) => Number(a.abreise.slice(5, 7)) === i + 1);
@@ -325,7 +328,7 @@ function renderListe(name, d) {
   // ein Eintrag je Kunde und Reisetag; Versicherungen sind keine Reisen
   const map = new Map();
   for (const r of d[cfg.quelle] || []) {
-    if (!r[cfg.datum] || /versicherung/i.test(r.beschreibung || '')) continue;
+    if (!r[cfg.datum] || !sichtbar(r)) continue;
     const key = r.kunde + '|' + r[cfg.datum];
     const e = map.get(key) || { key, kunde: r.kunde, abreise: r.abreise, rueckreise: r.rueckreise, ziele: new Set() };
     if (r.abreise < e.abreise) e.abreise = r.abreise;
