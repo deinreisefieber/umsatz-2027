@@ -155,7 +155,7 @@ th.n button{text-align:right;width:100%;box-sizing:border-box}
   </main>
 
   <main id="tab-nach" hidden>
-    <p class="hint">Kunden 3 Tage nach der Rückreise anschreiben und fragen, wie der Urlaub war. Abhaken merkt sich nur dieses Gerät.</p>
+    <p class="hint">Kunden 3 Tage nach der Rückreise anschreiben und fragen, wie der Urlaub war. Gezeigt werden Rückkehrer der letzten 14 Tage. Abhaken merkt sich nur dieses Gerät.</p>
     <div class="list" id="nachliste"></div>
   </main>
 </div>
@@ -163,6 +163,7 @@ th.n button{text-align:right;width:100%;box-sizing:border-box}
 <script>
 const ZIEL = 1250000;
 const NACH_TAGE = 3;
+const NACH_FENSTER = 14; // Rückkehrer der letzten 14 Tage
 const eur0 = new Intl.NumberFormat('de-DE', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 });
 const eur2 = new Intl.NumberFormat('de-DE', { style: 'currency', currency: 'EUR' });
 const int = new Intl.NumberFormat('de-DE');
@@ -300,7 +301,8 @@ function renderNach(d) {
   // ein Eintrag je Kunde und Rückreisetag
   const map = new Map();
   for (const r of d.rueckkehrer || []) {
-    if (!r.rueckreise) continue;
+    // Versicherungen sind keine Reisen
+    if (!r.rueckreise || /versicherung/i.test(r.beschreibung || '')) continue;
     const key = r.kunde + '|' + r.rueckreise;
     const e = map.get(key) || { key, kunde: r.kunde, rueckreise: r.rueckreise, abreise: r.abreise, ziele: new Set(), webcodes: [] };
     if (r.abreise < e.abreise) e.abreise = r.abreise;
@@ -312,7 +314,7 @@ function renderNach(d) {
     const faellig = tagNr(e.rueckreise) + NACH_TAGE;
     const status = erledigt.has(e.key) ? 'erledigt' : faellig === heute ? 'heute' : faellig < heute ? 'offen' : 'bald';
     return { ...e, faellig, status };
-  }).filter((e) => tagNr(e.rueckreise) <= heute)
+  }).filter((e) => tagNr(e.rueckreise) <= heute && tagNr(e.rueckreise) >= heute - NACH_FENSTER)
     .sort((a, b) => ({ heute: 0, offen: 1, bald: 2, erledigt: 3 }[a.status] - { heute: 0, offen: 1, bald: 2, erledigt: 3 }[b.status]) || b.faellig - a.faellig);
 
   const offen = liste.filter((e) => e.status === 'heute' || e.status === 'offen').length;
