@@ -83,6 +83,11 @@ th.n button{text-align:right;width:100%;box-sizing:border-box}
 .bald .pill{background:var(--accent-soft);color:var(--accent)}
 .erledigt .pill{background:transparent;color:var(--done)}
 .hint{font-size:.8rem;color:var(--muted);margin:4px 2px 12px}
+.kunde>div{min-width:0;overflow-wrap:anywhere}
+.links{display:flex;flex-wrap:wrap;gap:6px 12px;align-items:center;margin-top:6px;font-size:.85rem}
+.links a{color:var(--accent)}
+.knopf{all:unset;cursor:pointer;padding:9px 14px;border-radius:12px;background:var(--accent);color:#fff;font-weight:600;font-size:.9rem}
+.knopf.klein{padding:3px 10px;border-radius:999px;font-size:.8rem;font-weight:550;background:var(--accent-soft);color:var(--accent)}
 /* Login */
 .login{max-width:22rem;margin:12vh auto 0;text-align:center}
 .login input{width:100%;font:inherit;font-size:1.1rem;padding:12px 14px;border-radius:12px;border:1px solid var(--line);background:var(--card);color:var(--text);margin:14px 0 10px;text-align:center}
@@ -98,8 +103,9 @@ th.n button{text-align:right;width:100%;box-sizing:border-box}
     <div class="stand" id="stand"></div>
     <div class="tabs" role="tablist" id="tabs" hidden>
       <button role="tab" aria-selected="true" data-tab="umsatz">Umsatz</button>
-      <button role="tab" aria-selected="false" data-tab="vor">Vor dem Abflug<span class="badge" id="badge-vor" hidden></span></button>
+      <button role="tab" aria-selected="false" data-tab="vor">Abflug<span class="badge" id="badge-vor" hidden></span></button>
       <button role="tab" aria-selected="false" data-tab="nach">Nachbetreuung<span class="badge" id="badge-nach" hidden></span></button>
+      <button role="tab" aria-selected="false" data-tab="einreise">Einreise<span class="badge" id="badge-einreise" hidden></span></button>
     </div>
   </header>
 
@@ -163,6 +169,12 @@ th.n button{text-align:right;width:100%;box-sizing:border-box}
   <main id="tab-nach" hidden>
     <p class="hint">Kunden 3 Tage nach der Rückreise anschreiben und fragen, wie der Urlaub war. Gezeigt werden Rückkehrer der letzten 14 Tage. Abhaken bleibt auf diesem Gerät gespeichert.</p>
     <div class="list" id="nachliste"></div>
+  </main>
+
+  <main id="tab-einreise" hidden>
+    <p class="hint">Nur Reisen in Länder, für die deutsche Urlauber vorab etwas beantragen oder ausfüllen müssen. Der Termin ist der erste Tag, an dem es möglich ist. Stand der Regeln: <span id="regel-stand"></span> (Auswärtiges Amt) – vor dem Versand an den Kunden kurz über den Link prüfen.</p>
+    <p><button type="button" class="knopf" id="ics-alle">📅 Alle offenen Termine in den Kalender</button></p>
+    <div class="list" id="einreiseliste"></div>
   </main>
 </div>
 
@@ -316,7 +328,7 @@ const LISTEN = {
   vor: {
     quelle: 'abreisende', datum: 'abreise', speicher: 'vorabflug-erledigt', ziel: 'vorliste', badge: 'badge-vor',
     faellig: (tag) => tag - VOR_TAGE,
-    zeigen: (tag, heute) => tag >= heute,
+    zeigen: (tag, heute) => tag >= heute && tag <= heute + 21,
     text: { heute: 'heute melden', offen: 'fällig seit ', bald: 'ab ' },
     leer: 'Keine Abreisen in den nächsten drei Wochen.',
   },
@@ -376,12 +388,144 @@ function renderListe(name, d) {
   if (!liste.length) { const p = document.createElement('p'); p.className = 'hint'; p.textContent = cfg.leer; $(cfg.ziel).append(p); }
   zaehlen();
 }
+// ---------- Visa & Einreise ----------
+// Regeln für deutsche Staatsangehörige (Kurzurlaub), recherchiert beim Auswärtigen Amt. ab/bis = Tage vor Ankunft.
+// Länder ohne Pflicht (EU, Türkei, Japan, Vietnam …) stehen bewusst nicht in der Liste: dort kein Hinweis.
+const REGEL_STAND = '26.10.2026';
+const AA = 'https://www.auswaertiges-amt.de/de/';
+const REGELN = {
+  'Ägypten': { was: 'Visum (bei Ankunft oder e-Visum)', ab_tage: null, bis_tage: 0, kosten: 'ca. 30 USD', formular: 'https://www.visa2egypt.gov.eg', aa: AA + 'reiseundsicherheit/aegyptensicherheit-212622',
+    hinweis: 'Visum ist Pflicht. Bei Direktflügen nach Hurghada, Sharm oder Luxor meist bei Ankunft bezahlen (bar, USD); alternativ vorab als e-Visum.' },
+  'Thailand': { was: 'TDAC (digitale Einreisekarte)', ab_tage: 3, bis_tage: 0, kosten: 'kostenlos', formular: 'https://tdac.immigration.go.th', aa: AA + 'reiseundsicherheit/thailandsicherheit-201558',
+    hinweis: 'Frühestens 3 Tage vor Ankunft online ausfüllen. Visumfrei seit 15.09.2026 nur noch 30 Tage.' },
+  'Südafrika': { was: 'SARS Traveller Declaration', ab_tage: null, bis_tage: 1, kosten: 'kostenlos', formular: 'https://tools.sars.gov.za/sarsonlinequery/traveller', aa: AA + 'reiseundsicherheit/suedafrikasicherheit-208400',
+    hinweis: 'Seit 01.07.2026 Pflicht für Ein- und Ausreise, laut AA spätestens 24 Std. vor Abflug online abgeben.' },
+  'Dominikanische Republik': { was: 'E-Ticket (Ein- und Ausreiseformular)', ab_tage: null, bis_tage: 0, kosten: 'kostenlos', formular: 'https://eticket.migracion.gob.do/', aa: AA + 'service/laender/dominikanischerepublik-node/dominikanischerepubliksicherheit-206146',
+    hinweis: 'Je ein E-Ticket für Ein- und Ausreise. Der QR-Code wird oft schon beim Check-in verlangt – vor dem Abflug erledigen.' },
+  'Mauritius': { was: 'All in One Travel Form', ab_tage: null, bis_tage: 0, kosten: 'kostenlos', formular: 'https://safemauritius.govmu.org/', aa: AA + 'reiseundsicherheit/mauritiussicherheit-206994',
+    hinweis: 'Derzeit Pflicht (Ebola-Maßnahme, kann sich kurzfristig ändern). Online ausfüllen oder auf Papier am Gate abgeben.' },
+  'Kap Verde': { was: 'EASE-Vorabregistrierung (Flughafengebühr)', ab_tage: null, bis_tage: 5, kosten: 'ca. 31 EUR', formular: 'https://www.ease.gov.cv/', aa: AA + 'reiseundsicherheit/caboverdesicherheit-208824',
+    hinweis: 'Bis 5 Tage vor Reiseantritt online registrieren und per Kreditkarte zahlen, sonst Gebühr am Schalter.' },
+  'Taiwan': { was: 'TWAC (digitale Einreisekarte)', ab_tage: 3, bis_tage: 0, kosten: 'kostenlos', formular: 'https://twac.immigration.gov.tw/', aa: AA + 'reiseundsicherheit/taiwansicherheit-200896',
+    hinweis: 'Vor Ankunft online ausfüllen, das Papierformular entfällt. Behörde nennt 3 Tage vorher, AA 7 Tage – sicherheitshalber ab 3 Tage vorher.' },
+  'USA': { was: 'ESTA (Reisegenehmigung)', ab_tage: null, bis_tage: 3, kosten: 'ca. 40 USD', formular: 'https://esta.cbp.dhs.gov/', aa: AA + 'reiseundsicherheit/usavereinigtestaatensicherheit-201382',
+    hinweis: 'Mindestens 72 Std. vor Abflug beantragen, gilt 2 Jahre. Nur mit E-Pass (kein Kinderreisepass). Vorher prüfen, ob schon eine gültige ESTA besteht.' },
+  'Singapur': { was: 'SG Arrival Card', ab_tage: 3, bis_tage: 0, kosten: 'kostenlos', formular: 'https://eservices.ica.gov.sg/sgarrivalcard/', aa: AA + 'service/laender/singapur-node/singapursicherheit-225412',
+    hinweis: 'Innerhalb von 3 Tagen vor Ankunft online oder in der MyICA-App ausfüllen.' },
+  'Australien': { was: 'eVisitor (Subclass 651)', ab_tage: null, bis_tage: 14, kosten: 'kostenlos', formular: 'https://immi.homeaffairs.gov.au/visas/getting-a-visa/visa-listing/evisitor-651', aa: AA + 'service/laender/australien-node/australiensicherheit-213920',
+    hinweis: 'Ohne Reisegenehmigung keine Einreise, auch bei Kreuzfahrt-Landgang. Rechtzeitig beantragen (Frist hier mit 14 Tagen Puffer).' },
+  'Vereinigtes Königreich': { was: 'UK ETA (Reisegenehmigung)', ab_tage: null, bis_tage: 3, kosten: '20 GBP', formular: 'https://apply-for-an-eta.homeoffice.gov.uk', aa: AA + 'reiseundsicherheit/grossbritanniensicherheit-206408',
+    hinweis: 'Pflicht, auch bei Kreuzfahrt-Landgang. Mindestens 3 Tage vorher beantragen, nur mit Reisepass (Personalausweis reicht nicht).' },
+  'Südkorea': { nurAb: '2027-01-01', was: 'K-ETA prüfen', ab_tage: null, bis_tage: 3, kosten: '', formular: 'https://www.k-eta.go.kr', aa: AA + 'reiseundsicherheit/korearepubliksicherheit-216132',
+    hinweis: 'Die Befreiung von der K-ETA endet am 31.12.2026. Bei Reisen ab 2027 prüfen, ob eine K-ETA nötig ist; die e-Arrival Card online wird empfohlen.' },
+};
+// Ziel-Kürzel aus myJACK → Land; sonst wird der Ländername in der Reisebeschreibung gesucht
+const LAND_CODES = {
+  HRG: 'Ägypten', SSH: 'Ägypten', RMF: 'Ägypten', LXR: 'Ägypten', CAI: 'Ägypten', EG: 'Ägypten',
+  TH: 'Thailand', HKT: 'Thailand', BKK: 'Thailand', USM: 'Thailand', CNX: 'Thailand', KBV: 'Thailand',
+  ZA: 'Südafrika', CPT: 'Südafrika', JNB: 'Südafrika', DUR: 'Südafrika',
+  LRM: 'Dominikanische Republik', PUJ: 'Dominikanische Republik', POP: 'Dominikanische Republik', SDQ: 'Dominikanische Republik', DO: 'Dominikanische Republik',
+  MRU: 'Mauritius', MU: 'Mauritius', BVC: 'Kap Verde', SID: 'Kap Verde', CV: 'Kap Verde', TPE: 'Taiwan', TW: 'Taiwan',
+  JP: 'Japan', NRT: 'Japan', HND: 'Japan', KIX: 'Japan',
+  US: 'USA', NYC: 'USA', JFK: 'USA', EWR: 'USA', SEA: 'USA', MIA: 'USA', MCO: 'USA', LAX: 'USA', LAS: 'USA', SFO: 'USA', HNL: 'USA', BOS: 'USA', ORD: 'USA',
+  KR: 'Südkorea', ICN: 'Südkorea', VN: 'Vietnam', SGN: 'Vietnam', HAN: 'Vietnam', DAD: 'Vietnam', CXR: 'Vietnam',
+  SG: 'Singapur', SIN: 'Singapur', AU: 'Australien', SYD: 'Australien', MEL: 'Australien', 'Meer XS': 'Australien',
+  GB: 'Vereinigtes Königreich', UK: 'Vereinigtes Königreich', LON: 'Vereinigtes Königreich', LHR: 'Vereinigtes Königreich', LGW: 'Vereinigtes Königreich',
+  STN: 'Vereinigtes Königreich', MAN: 'Vereinigtes Königreich', EDI: 'Vereinigtes Königreich', 'Meer XA5': 'Vereinigtes Königreich',
+};
+const NAMEN = { 'Süd Korea': 'Südkorea', 'Suedkorea': 'Südkorea', 'England': 'Vereinigtes Königreich', 'Schottland': 'Vereinigtes Königreich', 'Großbritannien': 'Vereinigtes Königreich', 'Vereinigte Staaten': 'USA', 'Kapverden': 'Kap Verde' };
+function landVon(r) {
+  if (LAND_CODES[r.ziel]) return LAND_CODES[r.ziel];
+  const b = r.beschreibung || '';
+  for (const [n, l] of Object.entries(NAMEN)) if (b.includes(n)) return l;
+  return Object.keys(REGELN).find((l) => b.includes(l)) || null;
+}
+const erledigtEinreise = () => { try { return new Set(JSON.parse(store.get('einreise-erledigt') || '[]')); } catch (e) { return new Set(); } };
+
+function einreiseListe(d) {
+  const heute = heuteNr(), map = new Map(), gesehen = new Set();
+  for (const r of [...(d.abreisende || []), ...(d.auftraege || [])]) {
+    if (!r.abreise || !sichtbar(r) || gesehen.has(r.auftrag)) continue;
+    gesehen.add(r.auftrag);
+    const land = landVon(r), regel = land && REGELN[land];
+    if (!regel || tagNr(r.abreise) < heute || (regel.nurAb && r.abreise < regel.nurAb)) continue;
+    const key = r.kunde + '|' + r.abreise + '|' + land;
+    if (map.has(key)) continue;
+    const an = tagNr(r.abreise);
+    // Ohne frühesten Termin: ab Buchung (spätestens heute) möglich
+    const ab = regel.ab_tage != null ? an - regel.ab_tage : Math.min(tagNr(r.gebucht_am || isoAus(heute)), heute);
+    const bis = regel.bis_tage != null ? an - regel.bis_tage : an;
+    map.set(key, { key, kunde: r.kunde, abreise: r.abreise, land, regel, ab, bis, beschreibung: r.beschreibung || r.ziel });
+  }
+  // Was schon möglich ist, nach Frist (dringendstes oben); der Rest nach Starttermin
+  return [...map.values()].sort((a, b) => Math.max(a.ab, heute) - Math.max(b.ab, heute) || a.bis - b.bis || a.kunde.localeCompare(b.kunde));
+}
+
+// Kalender-Datei (ics): ganztägiger Termin am ersten möglichen Tag
+const icsDatum = (nr) => isoAus(nr).replace(/-/g, '');
+const icsText = (s) => String(s).replace(/\\/g, '\\\\').replace(/;/g, '\\;').replace(/,/g, '\\,').replace(/\n/g, '\\n');
+function icsEvent(e) {
+  const r = e.regel;
+  const text = `${r.was} für ${e.land} (Abreise ${datum(e.abreise)})\n${r.hinweis || ''}\nFrist: bis ${datum(isoAus(e.bis))}${r.kosten ? '\nKosten: ' + r.kosten : ''}${r.formular ? '\nFormular: ' + r.formular : ''}\nAuswärtiges Amt: ${r.aa}`;
+  return ['BEGIN:VEVENT', `UID:${encodeURIComponent(e.key)}@umsatz-2027`, `DTSTAMP:${new Date().toISOString().replace(/[-:]/g, '').slice(0, 15)}Z`,
+    `DTSTART;VALUE=DATE:${icsDatum(Math.max(e.ab, heuteNr()))}`, `DTEND;VALUE=DATE:${icsDatum(Math.max(e.ab, heuteNr()) + 1)}`,
+    `SUMMARY:${icsText(`${r.was.split(' (')[0]}: ${e.kunde} – ${e.land}`)}`, `DESCRIPTION:${icsText(text)}`, `URL:${r.formular || r.aa}`,
+    'BEGIN:VALARM', 'TRIGGER:PT9H', 'ACTION:DISPLAY', `DESCRIPTION:${icsText(r.was + ' ' + e.kunde)}`, 'END:VALARM', 'END:VEVENT'].join('\r\n');
+}
+function icsOeffnen(events, name) {
+  const ics = ['BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//Umsatz 2027//Einreise//DE', 'CALSCALE:GREGORIAN', ...events.map(icsEvent), 'END:VCALENDAR'].join('\r\n');
+  const datei = new File([ics], name + '.ics', { type: 'text/calendar' });
+  // iPhone: Teilen-Menü bzw. Kalender-Import; am PC: Download
+  if (navigator.canShare && navigator.canShare({ files: [datei] })) return navigator.share({ files: [datei] }).catch(() => {});
+  const a = document.createElement('a'); a.href = URL.createObjectURL(datei); a.download = datei.name; document.body.append(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(a.href), 5000);
+}
+
+function renderEinreise(d) {
+  $('regel-stand').textContent = REGEL_STAND || '–';
+  const heute = heuteNr(), erledigt = erledigtEinreise(), liste = einreiseListe(d);
+  const status = (e) => erledigt.has(e.key) ? 'erledigt' : heute > e.bis ? 'heute' : heute >= e.ab ? 'offen' : 'bald';
+  const pillText = (e, s) => s === 'erledigt' ? 'erledigt' : s === 'heute' ? 'Frist überschritten' : s === 'offen' ? 'jetzt möglich, bis ' + datum(isoAus(e.bis)) : 'ab ' + datum(isoAus(e.ab));
+  const zaehlen = () => { const n = liste.filter((e) => ['heute', 'offen'].includes(status(e))).length; $('badge-einreise').hidden = !n; $('badge-einreise').textContent = n; };
+  const link = (text, href) => { const a = document.createElement('a'); a.href = href; a.target = '_blank'; a.rel = 'noopener'; a.textContent = text; return a; };
+
+  $('einreiseliste').replaceChildren(...liste.map((e) => {
+    const s = status(e), r = e.regel;
+    const box = document.createElement('div'); box.className = 'kunde ' + s;
+    const cb = document.createElement('input'); cb.type = 'checkbox'; cb.checked = s === 'erledigt'; cb.setAttribute('aria-label', 'Erledigt');
+    const info = document.createElement('div');
+    const k = document.createElement('div'); k.className = 'k'; k.textContent = e.kunde;
+    const pill = document.createElement('span'); pill.className = 'pill'; pill.textContent = pillText(e, s); k.append(pill);
+    const d1 = document.createElement('div'); d1.className = 'd'; d1.textContent = `${e.land} · Abreise ${datum(e.abreise)} · ${r.was}${r.kosten ? ' · ' + r.kosten : ''}`;
+    const d2 = document.createElement('div'); d2.className = 'd'; d2.textContent = r.hinweis || '';
+    const d3 = document.createElement('div'); d3.className = 'links';
+    if (r.formular) d3.append(link('Antrag/Formular', r.formular));
+    d3.append(link('Auswärtiges Amt', r.aa));
+    const kal = document.createElement('button'); kal.type = 'button'; kal.className = 'knopf klein'; kal.textContent = '📅 Kalender';
+    kal.addEventListener('click', () => icsOeffnen([e], 'Einreise ' + e.kunde));
+    d3.append(kal);
+    info.append(k, d1, d2, d3);
+    box.append(cb, info);
+    cb.addEventListener('change', () => {
+      const set = erledigtEinreise(); cb.checked ? set.add(e.key) : set.delete(e.key);
+      store.set('einreise-erledigt', JSON.stringify([...set])); erledigt.clear(); set.forEach((x) => erledigt.add(x));
+      const neu = status(e); box.className = 'kunde ' + neu; pill.textContent = pillText(e, neu); zaehlen();
+    });
+    return box;
+  }));
+  if (!liste.length) { const p = document.createElement('p'); p.className = 'hint'; p.textContent = 'Keine anstehenden Reisen mit Visa- oder Einreisepflicht.'; $('einreiseliste').append(p); }
+  $('ics-alle').onclick = () => { const offen = liste.filter((e) => !erledigt.has(e.key)); if (offen.length) icsOeffnen(offen, 'Einreise-Termine'); };
+  $('ics-alle').hidden = !liste.length;
+  zaehlen();
+}
+
 // ---------- Ablauf ----------
 function zeigeTab(name) {
   document.querySelectorAll('#tabs button').forEach((b) => b.setAttribute('aria-selected', b.dataset.tab === name));
   $('tab-umsatz').hidden = name !== 'umsatz';
   $('tab-nach').hidden = name !== 'nach';
   $('tab-vor').hidden = name !== 'vor';
+  $('tab-einreise').hidden = name !== 'einreise';
   store.set('tab', name);
   if (name === 'umsatz') drawChart();
 }
@@ -392,8 +536,8 @@ function anzeigen(d) {
   $('login').hidden = true; $('tabs').hidden = false;
   const t = new Date(d.aktualisiert);
   $('stand').textContent = 'Stand: ' + t.toLocaleString('de-DE', { dateStyle: 'medium', timeStyle: 'short' }) + ' Uhr (aus myJACK)';
-  zeigeTab(['nach', 'vor'].includes(store.get('tab')) ? store.get('tab') : 'umsatz');
-  renderUmsatz(d); renderListe('vor', d); renderListe('nach', d);
+  zeigeTab(['nach', 'vor', 'einreise'].includes(store.get('tab')) ? store.get('tab') : 'umsatz');
+  renderUmsatz(d); renderListe('vor', d); renderListe('nach', d); renderEinreise(d);
   let w = innerWidth; addEventListener('resize', () => { if (innerWidth !== w) { w = innerWidth; if (!$('tab-umsatz').hidden) drawChart(); } });
 }
 
