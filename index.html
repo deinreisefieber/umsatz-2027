@@ -653,7 +653,7 @@ const notizFehler = (e) => /api40[13]/.test(e.message) ? 'Schlüssel ungültig o
 const erledigteTermine = () => { try { return new Set(JSON.parse(store.get('termine-erledigt') || '[]')); } catch (e) { return new Set(); } };
 
 // ---------- Sofort-Chat: direkter Aufruf der Claude-API mit eigenem Schlüssel (nur auf diesem Gerät) ----------
-const CLAUDE_MODELL = 'claude-opus-5-5';
+const CLAUDE_MODELL = 'claude-haiku-5-5';
 const claudeKopf = () => ({ 'x-api-key': store.get('claude-schluessel'), 'anthropic-version': '2026-10-21', 'anthropic-dangerous-direct-browser-access': 'true', 'content-type': 'application/json' });
 const CLAUDE_SYSTEM = `Du hilfst dem Reisebüro-Inhaber Lucas, aus seinen kurzen Nachrichten Termine für seine Kunden anzulegen. Antworte auf Deutsch und knapp.
 Lege einen Termin an (status "erledigt"), wenn Kunde und Datum feststehen. Rechne Fristen vom Abreisedatum der passenden Reise aus.
@@ -678,8 +678,8 @@ async function claudeFragen(text) {
   const rueck = (notizDaten.notizen || []).filter((n) => n.status === 'rueckfrage').sort((a, b) => (a.erstellt < b.erstellt ? 1 : -1))[0];
   const frueher = rueck ? `Offene Rückfrage: Lucas schrieb "${rueck.text}", du fragtest "${rueck.antwort || ''}".\n` : '';
   const inhalt = `Heute ist der ${isoAus(heuteNr())}.\n${frueher}Passende Reisen: ${JSON.stringify(passendeReisen(text + ' ' + (rueck ? rueck.text : '')))}\n\nNachricht von Lucas: ${text}`;
-  const r = await fetch('https://api.anthropic.com/v1/messages', { method: 'POST', headers: { ...claudeKopf(), 'anthropic-beta': 'server-side-fallback-2026-07-01' },
-    body: JSON.stringify({ model: CLAUDE_MODELL, max_tokens: 4000, fallbacks: 'default', system: CLAUDE_SYSTEM, output_config: { effort: 'low', format: CLAUDE_FORMAT }, messages: [{ role: 'user', content: inhalt }] }) });
+  const r = await fetch('https://api.anthropic.com/v1/messages', { method: 'POST', headers: claudeKopf(),
+    body: JSON.stringify({ model: CLAUDE_MODELL, max_tokens: 4000, system: CLAUDE_SYSTEM, output_config: { effort: 'low', format: CLAUDE_FORMAT }, messages: [{ role: 'user', content: inhalt }] }) });
   if (!r.ok) throw new Error('claude' + r.status);
   const j = await r.json();
   if (j.stop_reason !== 'end_turn') throw new Error('claude-' + j.stop_reason);
