@@ -92,6 +92,20 @@ th.n button{text-align:right;width:100%;box-sizing:border-box}
 .login{max-width:22rem;margin:12vh auto 0;text-align:center}
 .login input{width:100%;font:inherit;font-size:1.1rem;padding:12px 14px;border-radius:12px;border:1px solid var(--line);background:var(--card);color:var(--text);margin:14px 0 10px;text-align:center}
 .login button{all:unset;cursor:pointer;display:block;width:100%;padding:12px 0;border-radius:12px;background:var(--accent);color:#fff;font-weight:600}
+/* Notizen und Termine */
+.feld{display:block;width:100%;font:inherit;padding:10px 12px;border-radius:12px;border:1px solid var(--line);background:var(--bg);color:var(--text);margin-bottom:10px}
+textarea.feld{min-height:5.5rem;resize:vertical}
+.notiz-status{margin-left:10px;font-size:.85rem;color:var(--muted)}
+.notiz{display:block;background:var(--card);border-radius:14px;box-shadow:var(--shadow);padding:12px 14px;border-left:4px solid var(--line);overflow-wrap:anywhere}
+.notiz.offen{border-left-color:var(--warn)}
+.notiz.rueckfrage{border-left-color:var(--bad)}
+.notiz.erledigt{border-left-color:var(--done)}
+.notiz .pill{margin-left:0}
+.notiz.offen .pill{background:var(--warn-soft);color:var(--warn)}
+.notiz.rueckfrage .pill{background:var(--bad-soft);color:var(--bad)}
+.notiz.erledigt .pill{color:var(--done)}
+.notiz .t{white-space:pre-wrap;margin:4px 0}
+.abschnitt{margin:18px 2px 8px;font-size:1rem;font-weight:620}
 [hidden]{display:none!important}
 </style>
 </head>
@@ -107,6 +121,7 @@ th.n button{text-align:right;width:100%;box-sizing:border-box}
       <button role="tab" aria-selected="false" data-tab="nach">Nachbetreuung<span class="badge" id="badge-nach" hidden></span></button>
       <button role="tab" aria-selected="false" data-tab="einreise">Einreise<span class="badge" id="badge-einreise" hidden></span></button>
       <button role="tab" aria-selected="false" data-tab="geburtstag">🎂<span class="badge" id="badge-geburtstag" hidden></span></button>
+      <button role="tab" aria-selected="false" data-tab="notizen">Notizen<span class="badge" id="badge-notizen" hidden></span></button>
     </div>
   </header>
 
@@ -181,6 +196,26 @@ th.n button{text-align:right;width:100%;box-sizing:border-box}
     <p class="hint">Nur Reisen in Länder, für die deutsche Urlauber vorab etwas beantragen oder ausfüllen müssen. Der Termin ist der erste Tag, an dem es möglich ist. Stand der Regeln: <span id="regel-stand"></span> (Auswärtiges Amt) – vor dem Versand an den Kunden kurz über den Link prüfen.</p>
     <p><button type="button" class="knopf" id="ics-alle">📅 Alle offenen Termine in den Kalender</button></p>
     <div class="list" id="einreiseliste"></div>
+  </main>
+
+  <main id="tab-notizen" hidden>
+    <form class="card" id="notiz-form" hidden>
+      <h2>Neue Notiz</h2>
+      <textarea class="feld" id="notiz-text" placeholder="z. B. Erinnere mich bei Familie Müller an den Online-Check-in Eurowings." aria-label="Notiz"></textarea>
+      <button type="submit" class="knopf">Speichern</button><span class="notiz-status" id="notiz-meldung"></span>
+      <p class="hint" style="margin:10px 0 0">Claude bearbeitet offene Notizen beim nächsten Lauf (12:00 und 0:20 Uhr) und legt daraus Termine an.</p>
+    </form>
+    <form class="card" id="schluessel-form" hidden>
+      <h2>Einmalige Einrichtung</h2>
+      <p class="hint">Damit diese App Notizen speichern kann, braucht sie auf diesem Gerät einen GitHub-Schlüssel nur für dieses Projekt. Er bleibt auf diesem Gerät.</p>
+      <input type="password" class="feld" id="schluessel" autocomplete="off" autocapitalize="off" spellcheck="false" aria-label="GitHub-Schlüssel">
+      <button type="submit" class="knopf">Schlüssel prüfen und speichern</button><span class="notiz-status" id="schluessel-meldung"></span>
+    </form>
+    <h3 class="abschnitt">Termine</h3>
+    <div class="list" id="terminliste"></div>
+    <h3 class="abschnitt">Notizen</h3>
+    <div class="list" id="notizliste"></div>
+    <p><button type="button" class="knopf klein" id="schluessel-weg" hidden>Schlüssel von diesem Gerät entfernen</button></p>
   </main>
 </div>
 
@@ -478,8 +513,8 @@ function icsEvent(e) {
     `SUMMARY:${icsText(`${r.was.split(' (')[0]}: ${e.kunde} – ${e.land}`)}`, `DESCRIPTION:${icsText(text)}`, `URL:${r.formular || r.aa}`,
     'BEGIN:VALARM', 'TRIGGER:PT9H', 'ACTION:DISPLAY', `DESCRIPTION:${icsText(r.was + ' ' + e.kunde)}`, 'END:VALARM', 'END:VEVENT'].join('\r\n');
 }
-function icsOeffnen(events, name) {
-  const ics = ['BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//Umsatz 2027//Einreise//DE', 'CALSCALE:GREGORIAN', ...events.map(icsEvent), 'END:VCALENDAR'].join('\r\n');
+function icsOeffnen(events, name, zuEvent = icsEvent) {
+  const ics = ['BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//Umsatz 2027//Einreise//DE', 'CALSCALE:GREGORIAN', ...events.map(zuEvent), 'END:VCALENDAR'].join('\r\n');
   const datei = new File([ics], name + '.ics', { type: 'text/calendar' });
   // iPhone: Teilen-Menü bzw. Kalender-Import; am PC: Download
   if (navigator.canShare && navigator.canShare({ files: [datei] })) return navigator.share({ files: [datei] }).catch(() => {});
@@ -565,6 +600,133 @@ function renderGeburtstage(d) {
   zaehlen();
 }
 
+// ---------- Notizen und Termine ----------
+// Liegen verschlüsselt in notizen.enc.json im Repo. Die App schreibt über die GitHub-API (Schlüssel nur auf diesem
+// Gerät), Claude bearbeitet offene Notizen bei den Läufen mit tools\notizen.ps1.
+const REPO_API = 'https://api.github.com/repos/deinreisefieber/umsatz-2027/contents/notizen.enc.json';
+const LEER = () => ({ notizen: [], termine: [] });
+let passwort = '', notizDaten = LEER();
+const zuB64 = (bytes) => { let s = ''; bytes.forEach((b) => { s += String.fromCharCode(b); }); return btoa(s); };
+async function verschluesseln(obj, pw) {
+  const iter = 250000, salt = crypto.getRandomValues(new Uint8Array(16)), iv = crypto.getRandomValues(new Uint8Array(16));
+  const basis = await crypto.subtle.importKey('raw', new TextEncoder().encode(pw), 'PBKDF2', false, ['deriveKey']);
+  const key = await crypto.subtle.deriveKey({ name: 'PBKDF2', salt, iterations: iter, hash: 'SHA-256' }, basis, { name: 'AES-CBC', length: 256 }, false, ['encrypt']);
+  const ct = await crypto.subtle.encrypt({ name: 'AES-CBC', iv }, key, new TextEncoder().encode(JSON.stringify(obj)));
+  return { v: 1, iter, salt: zuB64(salt), iv: zuB64(iv), daten: zuB64(new Uint8Array(ct)) };
+}
+const apiKopf = () => ({ Authorization: 'Bearer ' + store.get('gh-schluessel'), Accept: 'application/vnd.github+json' });
+async function notizenHolen() {
+  if (store.get('gh-schluessel')) {
+    const r = await fetch(REPO_API + '?ref=main', { headers: apiKopf(), cache: 'no-store' });
+    if (r.status === 404) return { sha: null, inhalt: LEER() };
+    if (!r.ok) throw new Error('api' + r.status);
+    const j = await r.json();
+    return { sha: j.sha, inhalt: await entschluesseln(JSON.parse(atob(j.content.replace(/\s/g, ''))), passwort) };
+  }
+  const r = await fetch('notizen.enc.json', { cache: 'no-store' });
+  if (!r.ok) return { sha: null, inhalt: LEER() };
+  return { sha: null, inhalt: await entschluesseln(await r.json(), passwort) };
+}
+// Immer frisch laden, ändern, schreiben; läuft parallel ein Claude-Lauf, wird neu geladen und noch einmal versucht
+async function notizenAendern(aendern) {
+  for (let versuch = 0; versuch < 3; versuch++) {
+    const { sha, inhalt } = await notizenHolen();
+    aendern(inhalt);
+    const huelle = await verschluesseln(inhalt, passwort);
+    const r = await fetch(REPO_API, { method: 'PUT', headers: apiKopf(), body: JSON.stringify({ message: 'Notizen', branch: 'main', content: btoa(JSON.stringify(huelle)), ...(sha ? { sha } : {}) }) });
+    if (r.ok) { notizDaten = inhalt; renderNotizen(); return; }
+    if (r.status !== 409 && r.status !== 422) throw new Error('api' + r.status);
+  }
+  throw new Error('konflikt');
+}
+const notizFehler = (e) => /api40[13]/.test(e.message) ? 'Schlüssel ungültig oder ohne Schreibrecht.' : 'Speichern fehlgeschlagen, bitte noch einmal versuchen.';
+const erledigteTermine = () => { try { return new Set(JSON.parse(store.get('termine-erledigt') || '[]')); } catch (e) { return new Set(); } };
+
+function icsTermin(t) {
+  const tag = tagNr(t.datum);
+  return ['BEGIN:VEVENT', `UID:${encodeURIComponent(t.id)}@umsatz-2027`, `DTSTAMP:${new Date().toISOString().replace(/[-:]/g, '').slice(0, 15)}Z`,
+    `DTSTART;VALUE=DATE:${icsDatum(tag)}`, `DTEND;VALUE=DATE:${icsDatum(tag + 1)}`, `SUMMARY:${icsText(t.titel)}`, `DESCRIPTION:${icsText(t.text || '')}`,
+    'BEGIN:VALARM', 'TRIGGER:PT9H', 'ACTION:DISPLAY', `DESCRIPTION:${icsText(t.titel)}`, 'END:VALARM', 'END:VEVENT'].join('\r\n');
+}
+
+function renderNotizen() {
+  const hatSchluessel = !!store.get('gh-schluessel');
+  $('notiz-form').hidden = !hatSchluessel; $('schluessel-form').hidden = hatSchluessel; $('schluessel-weg').hidden = !hatSchluessel;
+  const heute = heuteNr(), erledigt = erledigteTermine();
+  const termine = [...(notizDaten.termine || [])].sort((a, b) => (a.datum < b.datum ? -1 : a.datum > b.datum ? 1 : 0));
+  const status = (t) => erledigt.has(t.id) ? 'erledigt' : tagNr(t.datum) === heute ? 'heute' : tagNr(t.datum) < heute ? 'offen' : 'bald';
+  const pillText = (t, s) => s === 'erledigt' ? 'erledigt' : s === 'heute' ? 'heute' : s === 'offen' ? 'fällig seit ' + datum(t.datum) : datum(t.datum);
+  const zaehlen = () => {
+    const n = termine.filter((t) => ['heute', 'offen'].includes(status(t))).length + (notizDaten.notizen || []).filter((x) => x.status === 'rueckfrage').length;
+    $('badge-notizen').hidden = !n; $('badge-notizen').textContent = n;
+  };
+  const loeschKnopf = (text, aendern) => {
+    const b = document.createElement('button'); b.type = 'button'; b.className = 'knopf klein'; b.textContent = text; b.hidden = !hatSchluessel;
+    b.addEventListener('click', async () => { b.textContent = '…'; try { await notizenAendern(aendern); } catch (e) { b.textContent = notizFehler(e); } });
+    return b;
+  };
+  $('terminliste').replaceChildren(...termine.map((t) => {
+    const s = status(t);
+    const box = document.createElement('div'); box.className = 'kunde ' + s;
+    const cb = document.createElement('input'); cb.type = 'checkbox'; cb.checked = s === 'erledigt'; cb.setAttribute('aria-label', 'Erledigt');
+    const info = document.createElement('div');
+    const k = document.createElement('div'); k.className = 'k'; k.textContent = t.titel;
+    const pill = document.createElement('span'); pill.className = 'pill'; pill.textContent = pillText(t, s); k.append(pill);
+    const d1 = document.createElement('div'); d1.className = 'd'; d1.textContent = t.text || '';
+    const l = document.createElement('div'); l.className = 'links';
+    const kal = document.createElement('button'); kal.type = 'button'; kal.className = 'knopf klein'; kal.textContent = '📅 Kalender';
+    kal.addEventListener('click', () => icsOeffnen([t], 'Termin', icsTermin));
+    l.append(kal, loeschKnopf('Löschen', (d) => { d.termine = (d.termine || []).filter((x) => x.id !== t.id); }));
+    info.append(k, d1, l);
+    box.append(cb, info);
+    cb.addEventListener('change', () => {
+      const set = erledigteTermine(); cb.checked ? set.add(t.id) : set.delete(t.id);
+      store.set('termine-erledigt', JSON.stringify([...set])); erledigt.clear(); set.forEach((x) => erledigt.add(x));
+      const neu = status(t); box.className = 'kunde ' + neu; pill.textContent = pillText(t, neu); zaehlen();
+    });
+    return box;
+  }));
+  if (!termine.length) { const p = document.createElement('p'); p.className = 'hint'; p.textContent = 'Noch keine Termine.'; $('terminliste').append(p); }
+  const STATUS = { offen: 'wartet auf den nächsten Lauf', rueckfrage: 'Rückfrage', erledigt: 'erledigt' };
+  const notizen = [...(notizDaten.notizen || [])].sort((a, b) => (a.erstellt < b.erstellt ? 1 : -1));
+  $('notizliste').replaceChildren(...notizen.map((n) => {
+    const box = document.createElement('div'); box.className = 'notiz ' + n.status;
+    const pill = document.createElement('span'); pill.className = 'pill'; pill.textContent = STATUS[n.status] || n.status;
+    const t = document.createElement('div'); t.className = 't'; t.textContent = n.text;
+    box.append(pill, t);
+    if (n.antwort) { const a = document.createElement('div'); a.className = 'd'; a.textContent = 'Claude: ' + n.antwort; box.append(a); }
+    const l = document.createElement('div'); l.className = 'links';
+    l.append(loeschKnopf('Löschen', (d) => { d.notizen = (d.notizen || []).filter((x) => x.id !== n.id); }));
+    box.append(l);
+    return box;
+  }));
+  if (!notizen.length) { const p = document.createElement('p'); p.className = 'hint'; p.textContent = 'Noch keine Notizen.'; $('notizliste').append(p); }
+  zaehlen();
+}
+async function notizenStart() {
+  try { notizDaten = (await notizenHolen()).inhalt; } catch (e) { $('notiz-meldung').textContent = notizFehler(e); }
+  renderNotizen();
+}
+$('notiz-form').addEventListener('submit', async (ev) => {
+  ev.preventDefault();
+  const text = $('notiz-text').value.trim(); if (!text) return;
+  const knopf = ev.target.querySelector('button'); knopf.disabled = true; $('notiz-meldung').textContent = 'Speichert …';
+  try {
+    await notizenAendern((d) => { d.notizen = d.notizen || []; d.notizen.push({ id: Date.now().toString(36) + Math.random().toString(36).slice(2, 6), text, erstellt: new Date().toISOString(), status: 'offen' }); });
+    $('notiz-text').value = ''; $('notiz-meldung').textContent = 'Gespeichert.';
+  } catch (e) { $('notiz-meldung').textContent = notizFehler(e); }
+  knopf.disabled = false;
+});
+$('schluessel-form').addEventListener('submit', async (ev) => {
+  ev.preventDefault();
+  const s = $('schluessel').value.trim(); if (!s) return;
+  $('schluessel-meldung').textContent = 'Prüft …';
+  store.set('gh-schluessel', s);
+  try { await notizenHolen(); $('schluessel').value = ''; $('schluessel-meldung').textContent = ''; await notizenStart(); }
+  catch (e) { store.del('gh-schluessel'); $('schluessel-meldung').textContent = 'Der Schlüssel funktioniert nicht.'; }
+});
+$('schluessel-weg').addEventListener('click', () => { store.del('gh-schluessel'); renderNotizen(); });
+
 // ---------- Ablauf ----------
 function zeigeTab(name) {
   document.querySelectorAll('#tabs button').forEach((b) => b.setAttribute('aria-selected', b.dataset.tab === name));
@@ -573,6 +735,7 @@ function zeigeTab(name) {
   $('tab-vor').hidden = name !== 'vor';
   $('tab-einreise').hidden = name !== 'einreise';
   $('tab-geburtstag').hidden = name !== 'geburtstag';
+  $('tab-notizen').hidden = name !== 'notizen';
   store.set('tab', name);
   if (name === 'umsatz') drawChart();
 }
@@ -583,8 +746,8 @@ function anzeigen(d) {
   $('login').hidden = true; $('tabs').hidden = false;
   const t = new Date(d.aktualisiert);
   $('stand').textContent = 'Stand: ' + t.toLocaleString('de-DE', { dateStyle: 'medium', timeStyle: 'short' }) + ' Uhr (aus myJACK)';
-  zeigeTab(['nach', 'vor', 'einreise', 'geburtstag'].includes(store.get('tab')) ? store.get('tab') : 'umsatz');
-  renderUmsatz(d); renderListe('vor', d); renderListe('nach', d); renderEinreise(d); renderGeburtstage(d);
+  zeigeTab(['nach', 'vor', 'einreise', 'geburtstag', 'notizen'].includes(store.get('tab')) ? store.get('tab') : 'umsatz');
+  renderUmsatz(d); renderListe('vor', d); renderListe('nach', d); renderEinreise(d); renderGeburtstage(d); notizenStart();
   let w = innerWidth; addEventListener('resize', () => { if (innerWidth !== w) { w = innerWidth; if (!$('tab-umsatz').hidden) drawChart(); } });
 }
 
@@ -597,13 +760,13 @@ async function start() {
   } catch (e) { $('fazit').textContent = 'Daten konnten nicht geladen werden.'; return; }
   const gespeichert = store.get('pw');
   if (gespeichert) {
-    try { return anzeigen(await entschluesseln(huelle, gespeichert)); } catch (e) { store.del('pw'); }
+    try { const d = await entschluesseln(huelle, gespeichert); passwort = gespeichert; return anzeigen(d); } catch (e) { store.del('pw'); }
   }
   $('login').hidden = false; $('pw').focus();
   $('login').addEventListener('submit', async (ev) => {
     ev.preventDefault();
     const pw = $('pw').value.trim();
-    try { const d = await entschluesseln(huelle, pw); store.set('pw', pw); anzeigen(d); }
+    try { const d = await entschluesseln(huelle, pw); store.set('pw', pw); passwort = pw; anzeigen(d); }
     catch (e) { $('pw-err').hidden = false; }
   });
 }
