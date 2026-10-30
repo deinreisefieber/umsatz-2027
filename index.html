@@ -106,6 +106,13 @@ textarea.feld{min-height:5.5rem;resize:vertical}
 .notiz.erledigt .pill{color:var(--done)}
 .notiz .t{white-space:pre-wrap;margin:4px 0}
 .abschnitt{margin:18px 2px 8px;font-size:1rem;font-weight:620}
+.rueck-hinweis{all:unset;display:block;box-sizing:border-box;width:100%;cursor:pointer;margin-bottom:14px;padding:10px 14px;border-radius:12px;background:var(--bad);color:#fff;font-weight:600;font-size:.9rem}
+.rueck-box{background:var(--bad-soft);border:2px solid var(--bad);border-radius:var(--radius);padding:16px;margin-bottom:14px;overflow-wrap:anywhere}
+.rueck-box h2{margin:0 0 10px;font-size:1.05rem;font-weight:650;color:var(--bad)}
+.rueck-box .t{white-space:pre-wrap;margin:0 0 8px}
+.rueck-box .frage{white-space:pre-wrap;font-weight:600;margin:0 0 12px}
+.rueck-box .feld{background:var(--card)}
+.rueck-box .links{margin-top:0}
 [hidden]{display:none!important}
 </style>
 </head>
@@ -125,6 +132,8 @@ textarea.feld{min-height:5.5rem;resize:vertical}
       <button role="tab" aria-selected="false" data-tab="notizen">Chat<span class="badge" id="badge-notizen" hidden></span></button>
     </div>
   </header>
+
+  <button type="button" class="rueck-hinweis" id="rueck-hinweis" hidden></button>
 
   <form class="card login" id="login" hidden>
     <h2>Passwort</h2>
@@ -205,6 +214,7 @@ textarea.feld{min-height:5.5rem;resize:vertical}
   </main>
 
   <main id="tab-notizen" hidden>
+    <div id="rueckfragen"></div>
     <form class="card" id="notiz-form" hidden>
       <h2>Nachricht an Claude</h2>
       <textarea class="feld" id="notiz-text" placeholder="z. B. Erinnere mich bei Familie Müller an den Online-Check-in Eurowings." aria-label="Nachricht"></textarea>
@@ -676,9 +686,8 @@ function passendeReisen(text) {
   return treffer.slice(0, 30);
 }
 async function claudeFragen(text) {
-  const rueck = (notizDaten.notizen || []).filter((n) => n.status === 'rueckfrage').sort((a, b) => (a.erstellt < b.erstellt ? 1 : -1))[0];
-  const frueher = rueck ? `Offene Rückfrage: Lucas schrieb "${rueck.text}", du fragtest "${rueck.antwort || ''}".\n` : '';
-  const inhalt = `Heute ist der ${isoAus(heuteNr())}.\n${frueher}Passende Reisen: ${JSON.stringify(passendeReisen(text + ' ' + (rueck ? rueck.text : '')))}\n\nNachricht von Lucas: ${text}`;
+  // Bei einer Antwort enthält text den bisherigen Verlauf dieser Nachricht
+  const inhalt = `Heute ist der ${isoAus(heuteNr())}.\nPassende Reisen: ${JSON.stringify(passendeReisen(text))}\n\nNachricht von Lucas: ${text}`;
   const r = await fetch('https://api.anthropic.com/v1/messages', { method: 'POST', headers: claudeKopf(),
     body: JSON.stringify({ model: CLAUDE_MODELL, max_tokens: 4000, system: CLAUDE_SYSTEM, output_config: { effort: 'low', format: CLAUDE_FORMAT }, messages: [{ role: 'user', content: inhalt }] }) });
   if (!r.ok) throw new Error('claude' + r.status);
@@ -742,8 +751,37 @@ function renderNotizen() {
     return box;
   }));
   if (!termine.length) { const p = document.createElement('p'); p.className = 'hint'; p.textContent = 'Noch keine Termine.'; $('terminliste').append(p); }
-  const STATUS = { offen: 'wartet auf den nächsten Lauf', rueckfrage: 'Rückfrage', erledigt: 'erledigt' };
-  const notizen = [...(notizDaten.notizen || [])].sort((a, b) => (a.erstellt < b.erstellt ? 1 : -1));
+  const STATUS = { offen: 'wartet auf den nächsten Lauf', erledigt: 'erledigt', verworfen: 'verworfen' };
+  const alle = [...(notizDaten.notizen || [])].sort((a, b) => (a.erstellt < b.erstellt ? 1 : -1));
+  const notizen = alle.filter((n) => n.status !== 'rueckfrage');
+  $('rueckfragen').replaceChildren(...alle.filter((n) => n.status === 'rueckfrage').map((n) => {
+    const box = document.createElement('form'); box.className = 'rueck-box';
+    const h = document.createElement('h2'); h.textContent = '❓ Claude braucht deine Antwort';
+    const t = document.createElement('div'); t.className = 't'; t.textContent = 'Du: ' + n.text;
+    const f = document.createElement('div'); f.className = 'frage'; f.textContent = 'Claude: ' + (n.antwort || '');
+    const feld = document.createElement('textarea'); feld.className = 'feld'; feld.placeholder = 'Deine Antwort …'; feld.setAttribute('aria-label', 'Antwort an Claude');
+    const l = document.createElement('div'); l.className = 'links';
+    const senden = document.createElement('button'); senden.type = 'submit'; senden.className = 'knopf'; senden.textContent = 'Antworten';
+    const weg = document.createElement('button'); weg.type = 'button'; weg.className = 'knopf klein'; weg.textContent = 'Verwerfen';
+    const meldung = document.createElement('span'); meldung.className = 'notiz-status';
+    l.append(senden, weg, meldung);
+    box.append(h, t, f, feld, l);
+    box.hidden = !hatSchluessel;
+    box.addEventListener('submit', async (ev) => {
+      ev.preventDefault();
+      const text = feld.value.trim(); if (!text) return;
+      senden.disabled = true;
+      try { await nachrichtSenden(`${n.text}\nClaude: ${n.antwort || ''}\nDu: ${text}`, n.id, meldung); }
+      catch (e) { meldung.textContent = notizFehler(e); senden.disabled = false; }
+    });
+    weg.addEventListener('click', async () => {
+      weg.disabled = true;
+      try { await notizenAendern((d) => { const x = (d.notizen || []).find((y) => y.id === n.id); if (x) x.status = 'verworfen'; }); }
+      catch (e) { meldung.textContent = notizFehler(e); weg.disabled = false; }
+    });
+    return box;
+  }));
+  rueckHinweis();
   $('notizliste').replaceChildren(...notizen.map((n) => {
     const box = document.createElement('div'); box.className = 'notiz ' + n.status;
     const pill = document.createElement('span'); pill.className = 'pill'; pill.textContent = STATUS[n.status] || n.status;
@@ -758,6 +796,33 @@ function renderNotizen() {
   if (!notizen.length) { const p = document.createElement('p'); p.className = 'hint'; p.textContent = 'Noch keine Nachrichten.'; $('notizliste').append(p); }
   zaehlen();
 }
+// Roter Hinweis auf allen Reitern außer dem Chat, dort steht die Rückfrage selbst
+function rueckHinweis() {
+  const n = (notizDaten.notizen || []).filter((x) => x.status === 'rueckfrage').length;
+  const imChat = !$('tab-notizen').hidden;
+  $('rueck-hinweis').hidden = !n || imChat || !$('login').hidden;
+  $('rueck-hinweis').textContent = n === 1 ? '❓ Claude hat eine Rückfrage' : `❓ Claude hat ${n} Rückfragen`;
+}
+// Neue Nachricht (rueckId null) oder Antwort auf eine Rückfrage, die dann in derselben Notiz weiterläuft
+async function nachrichtSenden(text, rueckId, meldung) {
+  const id = rueckId || Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+  let antwort = null, hinweis = 'Gesendet.';
+  if (store.get('claude-schluessel')) {
+    meldung.textContent = 'Claude denkt …';
+    try { antwort = await claudeFragen(text); hinweis = antwort.status === 'erledigt' ? 'Termin eingetragen.' : 'Claude hat eine Rückfrage.'; }
+    catch (e) { hinweis = (/claude401/.test(e.message) ? 'Claude-Schlüssel ungültig' : 'Claude nicht erreichbar') + ', wird beim nächsten Lauf bearbeitet.'; }
+  }
+  meldung.textContent = 'Speichert …';
+  await notizenAendern((d) => {
+    d.notizen = d.notizen || []; d.termine = d.termine || [];
+    let n = d.notizen.find((x) => x.id === id);
+    if (!n) { n = { id, erstellt: new Date().toISOString() }; d.notizen.push(n); }
+    n.text = text; n.status = antwort ? antwort.status : 'offen';
+    if (antwort) n.antwort = antwort.antwort; else delete n.antwort;
+    if (antwort && antwort.termin) d.termine.push({ id: id + '-t', datum: antwort.termin.datum, titel: antwort.termin.titel, text: antwort.termin.text, notiz: id });
+  });
+  $('notiz-meldung').textContent = hinweis;
+}
 async function notizenStart() {
   try { notizDaten = (await notizenHolen()).inhalt; } catch (e) { $('notiz-meldung').textContent = notizFehler(e); }
   renderNotizen();
@@ -766,26 +831,11 @@ $('notiz-form').addEventListener('submit', async (ev) => {
   ev.preventDefault();
   const text = $('notiz-text').value.trim(); if (!text) return;
   const knopf = ev.target.querySelector('button'); knopf.disabled = true;
-  const id = Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
-  let antwort = null, hinweis = 'Gesendet.';
-  if (store.get('claude-schluessel')) {
-    $('notiz-meldung').textContent = 'Claude denkt …';
-    try { antwort = await claudeFragen(text); hinweis = antwort.status === 'erledigt' ? 'Termin eingetragen.' : 'Claude hat eine Rückfrage.'; }
-    catch (e) { hinweis = (/claude401/.test(e.message) ? 'Claude-Schlüssel ungültig' : 'Claude nicht erreichbar') + ', wird beim nächsten Lauf bearbeitet.'; }
-  }
-  $('notiz-meldung').textContent = 'Speichert …';
-  try {
-    await notizenAendern((d) => {
-      d.notizen = d.notizen || []; d.termine = d.termine || [];
-      // Eine beantwortete Rückfrage ist damit erledigt
-      if (antwort && antwort.status === 'erledigt') d.notizen.forEach((n) => { if (n.status === 'rueckfrage') n.status = 'erledigt'; });
-      d.notizen.push({ id, text, erstellt: new Date().toISOString(), status: antwort ? antwort.status : 'offen', ...(antwort ? { antwort: antwort.antwort } : {}) });
-      if (antwort && antwort.termin) d.termine.push({ id: id + '-t', datum: antwort.termin.datum, titel: antwort.termin.titel, text: antwort.termin.text, notiz: id });
-    });
-    $('notiz-text').value = ''; $('notiz-meldung').textContent = hinweis;
-  } catch (e) { $('notiz-meldung').textContent = notizFehler(e); }
+  try { await nachrichtSenden(text, null, $('notiz-meldung')); $('notiz-text').value = ''; }
+  catch (e) { $('notiz-meldung').textContent = notizFehler(e); }
   knopf.disabled = false;
 });
+$('rueck-hinweis').addEventListener('click', () => zeigeTab('notizen'));
 $('claude-form').addEventListener('submit', async (ev) => {
   ev.preventDefault();
   const s = $('claude-schluessel').value.trim(); if (!s) return;
@@ -818,6 +868,7 @@ function zeigeTab(name) {
   $('tab-geburtstag').hidden = name !== 'geburtstag';
   $('tab-notizen').hidden = name !== 'notizen';
   $('tab-termine').hidden = name !== 'termine';
+  rueckHinweis();
   store.set('tab', name);
   if (name === 'umsatz') drawChart();
 }
