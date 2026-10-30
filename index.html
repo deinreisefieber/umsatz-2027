@@ -121,7 +121,8 @@ textarea.feld{min-height:5.5rem;resize:vertical}
       <button role="tab" aria-selected="false" data-tab="nach">Nachbetreuung<span class="badge" id="badge-nach" hidden></span></button>
       <button role="tab" aria-selected="false" data-tab="einreise">Einreise<span class="badge" id="badge-einreise" hidden></span></button>
       <button role="tab" aria-selected="false" data-tab="geburtstag">🎂<span class="badge" id="badge-geburtstag" hidden></span></button>
-      <button role="tab" aria-selected="false" data-tab="notizen">Notizen<span class="badge" id="badge-notizen" hidden></span></button>
+      <button role="tab" aria-selected="false" data-tab="termine">Termine<span class="badge" id="badge-termine" hidden></span></button>
+      <button role="tab" aria-selected="false" data-tab="notizen">Chat<span class="badge" id="badge-notizen" hidden></span></button>
     </div>
   </header>
 
@@ -198,12 +199,17 @@ textarea.feld{min-height:5.5rem;resize:vertical}
     <div class="list" id="einreiseliste"></div>
   </main>
 
+  <main id="tab-termine" hidden>
+    <p class="hint">Termine, die Claude aus deinen Chat-Nachrichten angelegt hat. Abhaken bleibt auf diesem Gerät gespeichert.</p>
+    <div class="list" id="terminliste"></div>
+  </main>
+
   <main id="tab-notizen" hidden>
     <form class="card" id="notiz-form" hidden>
-      <h2>Neue Notiz</h2>
-      <textarea class="feld" id="notiz-text" placeholder="z. B. Erinnere mich bei Familie Müller an den Online-Check-in Eurowings." aria-label="Notiz"></textarea>
-      <button type="submit" class="knopf">Speichern</button><span class="notiz-status" id="notiz-meldung"></span>
-      <p class="hint" style="margin:10px 0 0">Claude bearbeitet offene Notizen beim nächsten Lauf (12:00 und 0:20 Uhr) und legt daraus Termine an.</p>
+      <h2>Nachricht an Claude</h2>
+      <textarea class="feld" id="notiz-text" placeholder="z. B. Erinnere mich bei Familie Müller an den Online-Check-in Eurowings." aria-label="Nachricht"></textarea>
+      <button type="submit" class="knopf">Senden</button><span class="notiz-status" id="notiz-meldung"></span>
+      <p class="hint" style="margin:10px 0 0">Keine Sofort-Antwort: Claude liest neue Nachrichten beim nächsten Lauf (12:00 und 0:20 Uhr) und trägt daraus Termine ein.</p>
     </form>
     <form class="card" id="schluessel-form" hidden>
       <h2>Einmalige Einrichtung</h2>
@@ -211,9 +217,7 @@ textarea.feld{min-height:5.5rem;resize:vertical}
       <input type="password" class="feld" id="schluessel" autocomplete="off" autocapitalize="off" spellcheck="false" aria-label="GitHub-Schlüssel">
       <button type="submit" class="knopf">Schlüssel prüfen und speichern</button><span class="notiz-status" id="schluessel-meldung"></span>
     </form>
-    <h3 class="abschnitt">Termine</h3>
-    <div class="list" id="terminliste"></div>
-    <h3 class="abschnitt">Notizen</h3>
+    <h3 class="abschnitt">Verlauf</h3>
     <div class="list" id="notizliste"></div>
     <p><button type="button" class="knopf klein" id="schluessel-weg" hidden>Schlüssel von diesem Gerät entfernen</button></p>
   </main>
@@ -657,8 +661,10 @@ function renderNotizen() {
   const status = (t) => erledigt.has(t.id) ? 'erledigt' : tagNr(t.datum) === heute ? 'heute' : tagNr(t.datum) < heute ? 'offen' : 'bald';
   const pillText = (t, s) => s === 'erledigt' ? 'erledigt' : s === 'heute' ? 'heute' : s === 'offen' ? 'fällig seit ' + datum(t.datum) : datum(t.datum);
   const zaehlen = () => {
-    const n = termine.filter((t) => ['heute', 'offen'].includes(status(t))).length + (notizDaten.notizen || []).filter((x) => x.status === 'rueckfrage').length;
-    $('badge-notizen').hidden = !n; $('badge-notizen').textContent = n;
+    const n = termine.filter((t) => ['heute', 'offen'].includes(status(t))).length;
+    $('badge-termine').hidden = !n; $('badge-termine').textContent = n;
+    const f = (notizDaten.notizen || []).filter((x) => x.status === 'rueckfrage').length;
+    $('badge-notizen').hidden = !f; $('badge-notizen').textContent = f;
   };
   const loeschKnopf = (text, aendern) => {
     const b = document.createElement('button'); b.type = 'button'; b.className = 'knopf klein'; b.textContent = text; b.hidden = !hatSchluessel;
@@ -700,7 +706,7 @@ function renderNotizen() {
     box.append(l);
     return box;
   }));
-  if (!notizen.length) { const p = document.createElement('p'); p.className = 'hint'; p.textContent = 'Noch keine Notizen.'; $('notizliste').append(p); }
+  if (!notizen.length) { const p = document.createElement('p'); p.className = 'hint'; p.textContent = 'Noch keine Nachrichten.'; $('notizliste').append(p); }
   zaehlen();
 }
 async function notizenStart() {
@@ -713,7 +719,7 @@ $('notiz-form').addEventListener('submit', async (ev) => {
   const knopf = ev.target.querySelector('button'); knopf.disabled = true; $('notiz-meldung').textContent = 'Speichert …';
   try {
     await notizenAendern((d) => { d.notizen = d.notizen || []; d.notizen.push({ id: Date.now().toString(36) + Math.random().toString(36).slice(2, 6), text, erstellt: new Date().toISOString(), status: 'offen' }); });
-    $('notiz-text').value = ''; $('notiz-meldung').textContent = 'Gespeichert.';
+    $('notiz-text').value = ''; $('notiz-meldung').textContent = 'Gesendet.';
   } catch (e) { $('notiz-meldung').textContent = notizFehler(e); }
   knopf.disabled = false;
 });
@@ -736,6 +742,7 @@ function zeigeTab(name) {
   $('tab-einreise').hidden = name !== 'einreise';
   $('tab-geburtstag').hidden = name !== 'geburtstag';
   $('tab-notizen').hidden = name !== 'notizen';
+  $('tab-termine').hidden = name !== 'termine';
   store.set('tab', name);
   if (name === 'umsatz') drawChart();
 }
@@ -746,7 +753,7 @@ function anzeigen(d) {
   $('login').hidden = true; $('tabs').hidden = false;
   const t = new Date(d.aktualisiert);
   $('stand').textContent = 'Stand: ' + t.toLocaleString('de-DE', { dateStyle: 'medium', timeStyle: 'short' }) + ' Uhr (aus myJACK)';
-  zeigeTab(['nach', 'vor', 'einreise', 'geburtstag', 'notizen'].includes(store.get('tab')) ? store.get('tab') : 'umsatz');
+  zeigeTab(['nach', 'vor', 'einreise', 'geburtstag', 'termine', 'notizen'].includes(store.get('tab')) ? store.get('tab') : 'umsatz');
   renderUmsatz(d); renderListe('vor', d); renderListe('nach', d); renderEinreise(d); renderGeburtstage(d); notizenStart();
   let w = innerWidth; addEventListener('resize', () => { if (innerWidth !== w) { w = innerWidth; if (!$('tab-umsatz').hidden) drawChart(); } });
 }

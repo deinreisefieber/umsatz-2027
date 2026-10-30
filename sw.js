@@ -1,6 +1,6 @@
 // Mit Internet wird immer die neueste Version geladen (max. 4 Sek. warten),
 // ohne Internet kommt die gespeicherte Version.
-const CACHE = 'umsatz-2027-v8';
+const CACHE = 'umsatz-2027-v9';
 const FILES = ['./', './index.html', './daten.enc.json', './manifest.webmanifest', './icon-180.png', './icon-512.png'];
 
 self.addEventListener('install', e => {
