@@ -202,7 +202,7 @@ textarea.feld{min-height:5.5rem;resize:vertical}
   </main>
 
   <main id="tab-geburtstag" hidden>
-    <p class="hint" id="geburtstag-hinweis">Reiseanmelder (Reise seit Oktober 2025 oder geplant), die heute Geburtstag haben, darunter die der letzten 14 Tage. Abhaken = gratuliert.</p>
+    <p class="hint" id="geburtstag-hinweis">Reiseanmelder (Reise seit Oktober 2025 oder geplant), die heute Geburtstag haben, darunter die der nächsten und der letzten 14 Tage. Abhaken = gratuliert.</p>
     <div class="list" id="geburtstagliste"></div>
   </main>
 
@@ -587,10 +587,14 @@ function renderEinreise(d) {
 // ---------- Geburtstage: nur wer heute Geburtstag hat (Kundenselektion in myJACK, täglich) ----------
 const erledigtGeburtstag = () => { try { return new Set(JSON.parse(store.get('geburtstag-erledigt') || '[]')); } catch (e) { return new Set(); } };
 function renderGeburtstage(d) {
-  const g = d.geburtstage || { kunden: [] }, heute = isoAus(heuteNr()), aktuell = g.datum === heute;
-  const liste = aktuell ? g.kunden || [] : [];
-  // frühere Tage (bis 14 Tage zurück) aus dem Verlauf, nie künftige
-  const frueher = (d.geburtstage_verlauf || []).filter((t) => t.datum < heute && (t.kunden || []).length);
+  const g = d.geburtstage || { kunden: [] }, heute = isoAus(heuteNr()), verlauf = d.geburtstage_verlauf || [];
+  // heute: aus dem Verlauf (dort stehen auch die im Voraus abgefragten Tage) oder aus dem Stand des Stichtags
+  const tagHeute = verlauf.find((t) => t.datum === heute) || (g.datum === heute ? g : null), aktuell = !!tagHeute;
+  const liste = aktuell ? tagHeute.kunden || [] : [];
+  // nächste 14 Tage aufsteigend, frühere 14 Tage absteigend
+  const mitKunden = (t) => (t.kunden || []).length;
+  const demnaechst = verlauf.filter((t) => t.datum > heute && mitKunden(t)).sort((a, b) => a.datum.localeCompare(b.datum));
+  const frueher = verlauf.filter((t) => t.datum < heute && mitKunden(t)).sort((a, b) => b.datum.localeCompare(a.datum));
   const erledigt = erledigtGeburtstag();
   const key = (k, tag = heute) => tag + '|' + k.kunde;
   const zaehlen = () => { const n = liste.filter((k) => !erledigt.has(key(k))).length; $('badge-geburtstag').hidden = !n; $('badge-geburtstag').textContent = n; };
@@ -625,6 +629,7 @@ function renderGeburtstage(d) {
     p.textContent = aktuell ? 'Heute hat niemand Geburtstag.' : 'Für heute gibt es noch keine Geburtstage – sie kommen mit der morgendlichen Aktualisierung aus myJACK.';
     teile.push(p);
   }
+  demnaechst.forEach((t) => teile.push(ueberschrift('Hat Geburtstag: ' + tagText(t.datum)), ...t.kunden.map((k) => karte(k, t.datum))));
   frueher.forEach((t) => teile.push(ueberschrift('Hatte Geburtstag: ' + tagText(t.datum)), ...t.kunden.map((k) => karte(k, t.datum))));
   $('geburtstagliste').replaceChildren(...teile);
   zaehlen();
