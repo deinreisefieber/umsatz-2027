@@ -202,7 +202,7 @@ textarea.feld{min-height:5.5rem;resize:vertical}
   </main>
 
   <main id="tab-geburtstag" hidden>
-    <p class="hint" id="geburtstag-hinweis">Reiseanmelder (Reise seit Oktober 2025 oder geplant), die heute Geburtstag haben. Abhaken = gratuliert.</p>
+    <p class="hint" id="geburtstag-hinweis">Reiseanmelder (Reise seit Oktober 2025 oder geplant), die heute Geburtstag haben, darunter die der letzten 14 Tage. Abhaken = gratuliert.</p>
     <div class="list" id="geburtstagliste"></div>
   </main>
 
@@ -589,11 +589,14 @@ const erledigtGeburtstag = () => { try { return new Set(JSON.parse(store.get('ge
 function renderGeburtstage(d) {
   const g = d.geburtstage || { kunden: [] }, heute = isoAus(heuteNr()), aktuell = g.datum === heute;
   const liste = aktuell ? g.kunden || [] : [];
+  // frühere Tage (bis 14 Tage zurück) aus dem Verlauf, nie künftige
+  const frueher = (d.geburtstage_verlauf || []).filter((t) => t.datum < heute && (t.kunden || []).length);
   const erledigt = erledigtGeburtstag();
-  const key = (k) => heute + '|' + k.kunde;
+  const key = (k, tag = heute) => tag + '|' + k.kunde;
   const zaehlen = () => { const n = liste.filter((k) => !erledigt.has(key(k))).length; $('badge-geburtstag').hidden = !n; $('badge-geburtstag').textContent = n; };
-  $('geburtstagliste').replaceChildren(...liste.map((k) => {
-    const box = document.createElement('label'); box.className = 'kunde ' + (erledigt.has(key(k)) ? 'erledigt' : 'heute');
+  const ueberschrift = (text) => { const h = document.createElement('h3'); h.className = 'abschnitt'; h.textContent = text; return h; };
+  const karte = (k, tag) => {
+    const box = document.createElement('label'); box.className = 'kunde ' + (erledigt.has(key(k, tag)) ? 'erledigt' : tag === heute ? 'heute' : '');
     const cb = document.createElement('input'); cb.type = 'checkbox'; cb.checked = erledigt.has(key(k));
     const info = document.createElement('div');
     const n = document.createElement('div'); n.className = 'k'; n.textContent = '🎂 ' + k.kunde;
@@ -610,17 +613,20 @@ function renderGeburtstage(d) {
     }
     box.append(cb, info);
     cb.addEventListener('change', () => {
-      const set = erledigtGeburtstag(); cb.checked ? set.add(key(k)) : set.delete(key(k));
+      const set = erledigtGeburtstag(); cb.checked ? set.add(key(k, tag)) : set.delete(key(k, tag));
       store.set('geburtstag-erledigt', JSON.stringify([...set])); erledigt.clear(); set.forEach((x) => erledigt.add(x));
-      box.className = 'kunde ' + (cb.checked ? 'erledigt' : 'heute'); zaehlen();
+      box.className = 'kunde ' + (cb.checked ? 'erledigt' : tag === heute ? 'heute' : ''); zaehlen();
     });
     return box;
-  }));
+  };
+  const teile = [ueberschrift('Heute, ' + tagText(heute)), ...liste.map((k) => karte(k, heute))];
   if (!liste.length) {
     const p = document.createElement('p'); p.className = 'hint';
     p.textContent = aktuell ? 'Heute hat niemand Geburtstag.' : 'Für heute gibt es noch keine Geburtstage – sie kommen mit der morgendlichen Aktualisierung aus myJACK.';
-    $('geburtstagliste').append(p);
+    teile.push(p);
   }
+  frueher.forEach((t) => teile.push(ueberschrift('Hatte Geburtstag: ' + tagText(t.datum)), ...t.kunden.map((k) => karte(k, t.datum))));
+  $('geburtstagliste').replaceChildren(...teile);
   zaehlen();
 }
 
