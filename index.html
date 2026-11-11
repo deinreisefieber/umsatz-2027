@@ -52,6 +52,9 @@ dd.s{font-size:1.05rem;font-weight:550}
 .tile{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow);-webkit-backdrop-filter:var(--glas);backdrop-filter:var(--glas);padding:14px 16px}
 .tile .v{font-size:1.6rem;font-weight:650;font-variant-numeric:tabular-nums;margin:2px 0}
 .tile.warn .v{color:var(--bad)}
+.vj{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,9rem),1fr));gap:12px;margin:0}
+.vj dd{margin:2px 0 0;font-size:1.4rem;font-weight:650;font-variant-numeric:tabular-nums}
+.vj dd.plus{color:var(--done)} .vj dd.minus{color:var(--bad)}
 .chart{position:relative}
 .chart svg{display:block;width:100%;overflow:visible}
 .chart text{font-size:11px;fill:var(--muted);font-variant-numeric:tabular-nums}
@@ -159,6 +162,16 @@ textarea.feld{min-height:5.5rem;resize:vertical}
           <div><dt class="lbl">Fehlt noch</dt><dd class="s" id="fehlt">–</dd></div>
         </dl>
       </div>
+    </section>
+
+    <section class="card" id="vj-karte" hidden>
+      <h2>Vergleich zum Vorjahr</h2>
+      <dl class="vj">
+        <div><dt class="lbl">Heute · Abreise 2027</dt><dd id="vj-heute">–</dd></div>
+        <div><dt class="lbl" id="vj-damals-lbl">Vorjahr · Abreise 2026</dt><dd id="vj-damals">–</dd></div>
+        <div><dt class="lbl">Unterschied</dt><dd id="vj-diff">–</dd></div>
+      </dl>
+      <p class="hint" id="vj-hinweis"></p>
     </section>
 
     <section class="tiles">
@@ -372,9 +385,30 @@ function renderUmsatz(d) {
   $('offen').textContent = int.format(Number(o.offen) || 0);
   $('heute').textContent = (Number(o.heute_faellig) || 0) + ' heute fällig';
   $('tile-opt').classList.toggle('warn', Number(o.heute_faellig) > 0);
+  renderVorjahr(d, umsatz);
   const best = monate.reduce((a, b, i) => (b.umsatz > monate[a].umsatz ? i : a), 0);
   $('fazit').textContent = pct.format(share) + ' des Jahresziels sind gebucht. Stärkster Abreisemonat ist ' + MONAT[best] + ' mit ' + eur0.format(monate[best].umsatz) + '.';
   drawRing(share); drawChart(); drawTable();
+}
+
+// Vorjahresvergleich: Abreisen 2026, die am gleichen Kalendertag des Vorjahres schon gebucht waren (Buchungsdatum),
+// gegen alle heute gebuchten Abreisen 2027. Grundlage ist die heutige myJACK-Liste der Abreisen 2026.
+function renderVorjahr(d, umsatz) {
+  const vj = (d.vorjahr || []).filter(sichtbar);
+  $('vj-karte').hidden = !vj.length;
+  if (!vj.length) return;
+  const h = new Date(), j = h.getFullYear() - 1, m = h.getMonth();
+  const tag = Math.min(h.getDate(), new Date(j, m + 1, 0).getDate()); // 29.02. → 28.02.
+  const stich = j + '-' + String(m + 1).padStart(2, '0') + '-' + String(tag).padStart(2, '0');
+  const damals = vj.filter((a) => a.gebucht_am && a.gebucht_am <= stich);
+  const summe = damals.reduce((s, a) => s + Number(a.reisepreis), 0), diff = umsatz - summe;
+  $('vj-heute').textContent = eur0.format(umsatz);
+  $('vj-damals-lbl').textContent = 'Am ' + datum(stich) + ' · Abreise 2026';
+  $('vj-damals').textContent = eur0.format(summe);
+  $('vj-diff').textContent = (diff >= 0 ? '+' : '−') + eur0.format(Math.abs(diff)) + (summe ? ' (' + (diff >= 0 ? '+' : '−') + pct.format(Math.abs(diff) / summe) + ')' : '');
+  $('vj-diff').className = diff >= 0 ? 'plus' : 'minus';
+  $('vj-hinweis').textContent = 'Heute ' + int.format(auftraege.length) + ' Aufträge mit Abreise 2027, am ' + datum(stich) + ' waren es '
+    + int.format(damals.length) + ' Aufträge mit Abreise 2026. Später stornierte Vorjahresbuchungen und Preisänderungen sind im Vorjahreswert nicht enthalten.';
 }
 
 // ---------- Listen: Nachbetreuung und Vor dem Abflug ----------
